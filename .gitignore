@@ -1,0 +1,159 @@
+# ---------- .NET / Visual Studio / Rider ----------
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+[Bb]uild/
+bld/
+[Ll]og/
+[Ll]ogs/
+
+# Visual Studio
+.vs/
+*.suo
+*.user
+*.userosscache
+*.userprefs
+*.sln.docstates
+*.svclog
+*.VC.db
+*.VC.VC.opendb
+
+# Rider / ReSharper
+.idea/
+*.iml
+_ReSharper*/
+*.[Rr]e[Ss]harper
+*.DotSettings.user
+
+# Test / coverage
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+*.coverage
+*.coveragexml
+coverage/
+
+# Publish
+[Pp]ublish/
+*.[Pp]ublish.xml
+PublishProfiles/
+*.azurePubxml
+*.pubxml.user
+
+# NuGet
+*.nupkg
+*.snupkg
+**/[Pp]ackages/*
+!**/[Pp]ackages/build/
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# Misc .NET
+*.pdb
+*.cache
+*.tmp
+*.tmp_proj
+*.log
+*.vspscc
+*.vssscc
+.builds
+*.pidb
+*.svclog
+*.scc
+_NCrunch_*
+.*crunch*.local.xml
+nCrunchTemp_*
+*.mm.*
+AutoTest.Net/
+.sass-cache/
+[Ee]xpress/
+DocProject/buildhelp/
+DocProject/Help/*.HxT
+DocProject/Help/*.HxC
+DocProject/Help/*.hhc
+DocProject/Help/*.hhk
+DocProject/Help/*.hhp
+DocProject/Help/Html2
+DocProject/Help/html
+*.[Pp]ublish.xml
+PublishScripts/
+
+# ASP.NET Scaffolding
+ScaffoldingReadMe.txt
+
+# Migrations / EF
+# (keep migration code committed; ignore generated SQL dumps if any)
+*.dacpac
+
+# User secrets (handled by dotnet user-secrets, but ignore stray files)
+secrets.json
+*.user.json
+
+# ---------- Node / Vite / React client ----------
+node_modules/
+dist/
+dist-ssr/
+.vite/
+
+# Build output (already covered above for .NET; explicit for Node)
+build/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Caches
+.eslintcache
+.parcel-cache/
+.cache/
+*.tsbuildinfo
+
+# Coverage (Node)
+coverage/
+.nyc_output/
+
+# Optional REPL history
+.node_repl_history
+
+# ---------- Environment / Secrets ----------
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.*.local
+appsettings.*.local.json
+*.pem
+*.pfx
+*.key
+*.p12
+
+# ---------- Editors ----------
+.vscode/
+*.swp
+*.swo
+*~
+*.bak
+*.orig
+
+# ---------- OS junk ----------
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+desktop.ini
+$RECYCLE.BIN/
+*.lnk
+.claude

@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/CarMarketplace.Application/CarMarketplace.Application.csproj" />
+    <Project Path="src/CarMarketplace.Domain/CarMarketplace.Domain.csproj" />
+    <Project Path="src/CarMarketplace.Infrastructure/CarMarketplace.Infrastructure.csproj" />
+    <Project Path="src/CarMarketplace.Scraper/CarMarketplace.Scraper.csproj" />
+    <Project Path="src/CarMarketplace.Web/CarMarketplace.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/CarMarketplace.Domain.Tests/CarMarketplace.Domain.Tests.csproj" />
+    <Project Path="tests/CarMarketplace.Application.Tests/CarMarketplace.Application.Tests.csproj" />
+  </Folder>
+</Solution>
