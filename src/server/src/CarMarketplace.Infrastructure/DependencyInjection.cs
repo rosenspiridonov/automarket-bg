@@ -1,6 +1,7 @@
 using CarMarketplace.Application.Interfaces;
 using CarMarketplace.Domain.Entities;
 using CarMarketplace.Infrastructure.Persistence;
+using CarMarketplace.Infrastructure.Persistence.Seed;
 using CarMarketplace.Infrastructure.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -36,6 +37,7 @@ public static class DependencyInjection
         services.AddScoped<ISavedSearchService, SavedSearchService>();
         services.AddScoped<IMarketAnalyticsService, MarketAnalyticsService>();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
+        services.AddSingleton<ISeedDataProvider, JsonSeedDataProvider>();
         services.AddHttpContextAccessor();
 
         var cloudinaryCloudName = configuration["Cloudinary:CloudName"];

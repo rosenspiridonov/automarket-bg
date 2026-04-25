@@ -1,5 +1,6 @@
 using System.Text;
 using CarMarketplace.Application.Common;
+using CarMarketplace.Application.Interfaces;
 using CarMarketplace.Domain.Entities;
 using CarMarketplace.Infrastructure;
 using CarMarketplace.Infrastructure.Persistence;
@@ -138,8 +139,9 @@ app.MapControllers();
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    var seedData = scope.ServiceProvider.GetRequiredService<ISeedDataProvider>();
     await context.Database.MigrateAsync();
-    await DataSeeder.SeedAsync(context);
+    await DataSeeder.SeedAsync(context, seedData);
 
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
     var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
