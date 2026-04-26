@@ -1,15 +1,19 @@
 using CarMarketplace.Application.Interfaces;
+using Microsoft.Extensions.Hosting;
 
 namespace CarMarketplace.Infrastructure.Services;
 
-public class LocalImageService(string uploadPath = "wwwroot/uploads") : IImageStorageService
+public class LocalImageService : IImageStorageService
 {
-    private readonly string resolvedPath = EnsureDirectory(uploadPath);
+    private const string UploadsFolder = "uploads";
+    private readonly string resolvedPath;
 
-    private static string EnsureDirectory(string path)
+    public LocalImageService(IHostEnvironment environment)
     {
-        Directory.CreateDirectory(path);
-        return path;
+        // Anchor uploads to ContentRoot/wwwroot/uploads so the path is the same
+        // regardless of which directory dotnet was launched from.
+        resolvedPath = Path.Combine(environment.ContentRootPath, "wwwroot", UploadsFolder);
+        Directory.CreateDirectory(resolvedPath);
     }
 
     public async Task<ImageUploadResult> UploadAsync(Stream fileStream, string fileName)
@@ -17,10 +21,10 @@ public class LocalImageService(string uploadPath = "wwwroot/uploads") : IImageSt
         var uniqueName = $"{Guid.NewGuid()}{Path.GetExtension(fileName)}";
         var filePath = Path.Combine(resolvedPath, uniqueName);
 
-        using var fileStreamOut = new FileStream(filePath, FileMode.Create);
+        await using var fileStreamOut = new FileStream(filePath, FileMode.Create);
         await fileStream.CopyToAsync(fileStreamOut);
 
-        var url = $"/uploads/{uniqueName}";
+        var url = $"/{UploadsFolder}/{uniqueName}";
         return new ImageUploadResult(url, uniqueName);
     }
 

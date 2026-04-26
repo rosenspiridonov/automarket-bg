@@ -131,6 +131,8 @@ app.UseMiddleware<GlobalExceptionHandler>();
 
 app.UseCors("AllowFrontend");
 
+app.UseStaticFiles();
+
 app.UseAuthentication();
 app.UseAuthorization();
 

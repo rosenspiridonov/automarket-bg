@@ -82,23 +82,60 @@ public class CarListingsController(ICarListingService listingService) : Controll
         }
     }
 
+    private const int MaxImagesPerRequest = 20;
+    private const long MaxImageBytes = 10 * 1024 * 1024;
+    private static readonly HashSet<string> AllowedImageContentTypes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "image/jpeg", "image/png", "image/webp", "image/gif"
+    };
+    private static readonly HashSet<string> AllowedImageExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".jpg", ".jpeg", ".png", ".webp", ".gif"
+    };
+
     [HttpPost("{id:int}/images")]
     [Authorize]
+    [RequestSizeLimit(MaxImagesPerRequest * MaxImageBytes)]
     public async Task<IActionResult> UploadImages(int id, [FromForm] List<IFormFile> files)
     {
         if (files.Count == 0)
             return BadRequest(new { error = "No files provided." });
 
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+        if (files.Count > MaxImagesPerRequest)
+            return BadRequest(new { error = $"At most {MaxImagesPerRequest} files per request." });
 
-        var uploads = files.Select(f => new ListingImageUpload
+        foreach (var file in files)
         {
-            Stream = f.OpenReadStream(),
-            FileName = f.FileName
-        }).ToList();
+            if (file.Length == 0)
+                return BadRequest(new { error = $"File '{file.FileName}' is empty." });
+
+            if (file.Length > MaxImageBytes)
+                return BadRequest(new { error = $"File '{file.FileName}' exceeds 10 MB limit." });
+
+            var extension = Path.GetExtension(file.FileName);
+            if (!AllowedImageContentTypes.Contains(file.ContentType) ||
+                !AllowedImageExtensions.Contains(extension))
+            {
+                return BadRequest(new { error = $"File '{file.FileName}' has an unsupported type." });
+            }
+        }
+
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+        var openedStreams = new List<Stream>(files.Count);
 
         try
         {
+            var uploads = files.Select(f =>
+            {
+                var stream = f.OpenReadStream();
+                openedStreams.Add(stream);
+                return new ListingImageUpload
+                {
+                    Stream = stream,
+                    FileName = f.FileName
+                };
+            }).ToList();
+
             await listingService.AddImagesAsync(id, userId, uploads);
             return Ok(new { message = "Images uploaded successfully." });
         }
@@ -109,6 +146,11 @@ public class CarListingsController(ICarListingService listingService) : Controll
         catch (UnauthorizedAccessException)
         {
             return Forbid();
+        }
+        finally
+        {
+            foreach (var stream in openedStreams)
+                await stream.DisposeAsync();
         }
     }
 

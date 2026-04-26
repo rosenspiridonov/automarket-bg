@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useState, useEffect, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { Save, Upload, X } from 'lucide-react';
 import { listingsApi } from '../api/listings';
@@ -43,6 +43,7 @@ const STATUS_LABELS: Record<string, string> = {
 export function EditListingPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [newFiles, setNewFiles] = useState<File[]>([]);
 
   const { data: listing, isLoading: loadingListing } = useQuery({
@@ -99,6 +100,7 @@ export function EditListingPage() {
   const handleDeleteImage = async (imageId: number) => {
     try {
       await listingsApi.deleteImage(Number(id), imageId);
+      await queryClient.invalidateQueries({ queryKey: ['listing', id] });
       toast.success('Снимката е премахната');
     } catch {
       toast.error('Неуспешно премахване на снимката');
@@ -109,6 +111,10 @@ export function EditListingPage() {
     try {
       await listingsApi.update(Number(id), data);
       if (newFiles.length > 0) await listingsApi.uploadImages(Number(id), newFiles);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['listing', id] }),
+        queryClient.invalidateQueries({ queryKey: ['listings', 'my'] }),
+      ]);
       toast.success('Обявата е обновена успешно!');
       navigate(`/listings/${id}`);
     } catch {

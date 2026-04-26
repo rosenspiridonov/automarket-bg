@@ -44,7 +44,7 @@ public static class DependencyInjection
         if (!string.IsNullOrEmpty(cloudinaryCloudName))
             services.AddScoped<IImageStorageService, CloudinaryImageService>();
         else
-            services.AddScoped<IImageStorageService>(_ => new LocalImageService());
+            services.AddScoped<IImageStorageService, LocalImageService>();
 
         return services;
     }
