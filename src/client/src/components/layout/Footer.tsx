@@ -2,36 +2,53 @@ import { Link } from 'react-router-dom';
 
 export function Footer() {
   return (
-    <footer className="bg-gray-900 text-gray-400 py-10 mt-auto">
-      <div className="max-w-7xl mx-auto px-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+    <footer className="mt-16 border-t border-border bg-surface">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
           <div>
-            <h3 className="text-white font-bold text-lg mb-3">AutoMarket BG</h3>
-            <p className="text-sm">
-              Модерният онлайн пазар за коли в България.
-              Купувай и продавай с увереност.
+            <div className="flex items-center gap-2 font-semibold text-fg">
+              <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-fg text-white text-sm font-bold">
+                A
+              </span>
+              AutoMarket BG
+            </div>
+            <p className="mt-3 text-sm text-fg-muted max-w-xs">
+              Минималистичният онлайн пазар за коли в България. Купувай и продавай с увереност.
             </p>
           </div>
+
           <div>
-            <h4 className="text-white font-medium mb-3">Бързи връзки</h4>
-            <ul className="space-y-2 text-sm">
-              <li><Link to="/search" className="hover:text-white transition-colors">Търсене на коли</Link></li>
-              <li><Link to="/listings/new" className="hover:text-white transition-colors">Публикувай обява</Link></li>
+            <h4 className="text-xs font-semibold uppercase tracking-wide text-fg-subtle">Разглеждане</h4>
+            <ul className="mt-3 space-y-2 text-sm">
+              <li><FooterLink to="/search">Търсене на коли</FooterLink></li>
+              <li><FooterLink to="/analytics">Пазарни анализи</FooterLink></li>
+              <li><FooterLink to="/listings/new">Публикувай обява</FooterLink></li>
             </ul>
           </div>
+
           <div>
-            <h4 className="text-white font-medium mb-3">Профил</h4>
-            <ul className="space-y-2 text-sm">
-              <li><Link to="/login" className="hover:text-white transition-colors">Вход</Link></li>
-              <li><Link to="/register" className="hover:text-white transition-colors">Създай профил</Link></li>
-              <li><Link to="/profile" className="hover:text-white transition-colors">Моят профил</Link></li>
+            <h4 className="text-xs font-semibold uppercase tracking-wide text-fg-subtle">Профил</h4>
+            <ul className="mt-3 space-y-2 text-sm">
+              <li><FooterLink to="/login">Вход</FooterLink></li>
+              <li><FooterLink to="/register">Създай профил</FooterLink></li>
+              <li><FooterLink to="/favorites">Любими</FooterLink></li>
             </ul>
           </div>
         </div>
-        <div className="border-t border-gray-800 mt-8 pt-6 text-center text-xs">
-          &copy; {new Date().getFullYear()} AutoMarket BG. Всички права запазени.
+
+        <div className="mt-10 flex flex-col items-center justify-between gap-2 border-t border-border pt-6 text-xs text-fg-subtle sm:flex-row">
+          <span>&copy; {new Date().getFullYear()} AutoMarket BG. Всички права запазени.</span>
+          <span>Изграден с грижа за купувачи и продавачи в България.</span>
         </div>
       </div>
     </footer>
+  );
+}
+
+function FooterLink({ to, children }: { to: string; children: React.ReactNode }) {
+  return (
+    <Link to={to} className="text-fg-muted hover:text-fg transition-colors">
+      {children}
+    </Link>
   );
 }

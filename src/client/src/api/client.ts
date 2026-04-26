@@ -59,7 +59,7 @@ apiClient.interceptors.response.use(
 
       try {
         const data = await performRefresh(refreshToken);
-        useAuthStore.getState().setAuth(data);
+        useAuthStore.getState().setTokens(data);
         originalRequest.headers = {
           ...(originalRequest.headers ?? {}),
           Authorization: `Bearer ${data.accessToken}`,

@@ -5,6 +5,22 @@ import toast from 'react-hot-toast';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
+import {
+  ArrowLeft,
+  Calendar,
+  Car,
+  CheckCircle2,
+  Edit,
+  Heart,
+  Mail,
+  MapPin,
+  Minus,
+  Phone,
+  Send,
+  TrendingDown,
+  TrendingUp,
+  User as UserIcon,
+} from 'lucide-react';
 import { listingsApi } from '../api/listings';
 import { favoritesApi } from '../api/favorites';
 import { formatPrice, formatMileage, formatDate } from '../utils/format';
@@ -18,6 +34,8 @@ import {
   CONDITION_LABELS,
 } from '../utils/constants';
 import type { FairPriceAnalysis } from '../types/listing';
+import { Badge, Button, Container, Skeleton, Textarea } from '../components/ui';
+import { cn } from '../utils/cn';
 
 export function ListingDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -44,7 +62,7 @@ export function ListingDetailPage() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['favorite-ids'] });
       queryClient.invalidateQueries({ queryKey: ['favorites'] });
-      toast.success(data.isFavorited ? 'Добавена в запазените' : 'Премахната от запазените');
+      toast.success(data.isFavorited ? 'Добавена в любими' : 'Премахната от любими');
     },
   });
 
@@ -53,25 +71,25 @@ export function ListingDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 py-12">
-        <div className="animate-pulse space-y-6">
-          <div className="h-96 bg-gray-200 rounded-xl" />
-          <div className="h-8 bg-gray-200 rounded w-2/3" />
-          <div className="h-4 bg-gray-200 rounded w-1/3" />
+      <Container className="py-10">
+        <div className="space-y-6">
+          <Skeleton className="aspect-[16/9] w-full rounded-2xl" />
+          <Skeleton className="h-7 w-2/3" />
+          <Skeleton className="h-4 w-1/3" />
         </div>
-      </div>
+      </Container>
     );
   }
 
   if (error || !listing) {
     return (
-      <div className="max-w-7xl mx-auto px-4 py-12 text-center">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">Обявата не е намерена</h2>
-        <p className="text-gray-600 mb-6">Тази обява може да е премахната или да не съществува.</p>
-        <Link to="/search" className="text-blue-600 hover:underline">
-          Обратно към търсенето
+      <Container className="py-16 text-center">
+        <h2 className="text-xl font-semibold text-fg">Обявата не е намерена</h2>
+        <p className="mt-2 text-sm text-fg-muted">Тази обява може да е премахната или да не съществува.</p>
+        <Link to="/search" className="mt-6 inline-block text-sm font-medium text-primary hover:underline">
+          ← Обратно към търсенето
         </Link>
-      </div>
+      </Container>
     );
   }
 
@@ -87,7 +105,7 @@ export function ListingDetailPage() {
       acc[f.category].push(f);
       return acc;
     },
-    {} as Record<string, typeof listing.features>
+    {} as Record<string, typeof listing.features>,
   );
 
   const handleSendMessage = () => {
@@ -102,97 +120,66 @@ export function ListingDetailPage() {
   const priceHistory = listing.priceHistory ?? [];
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
-      <div className="flex items-center justify-between mb-4">
-        <Link to="/search" className="text-blue-600 hover:underline text-sm">
-          &larr; Обратно към търсенето
+    <Container className="py-6 lg:py-10">
+      <div className="mb-5 flex items-center justify-between">
+        <Link
+          to="/search"
+          className="inline-flex items-center gap-1.5 text-sm text-fg-muted hover:text-fg"
+        >
+          <ArrowLeft className="h-4 w-4" /> Обратно към търсенето
         </Link>
         <div className="flex items-center gap-2">
           {isAuthenticated && !isOwner && (
-            <button
-              onClick={() => toggleFavorite.mutate()}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
-                isFavorited
-                  ? 'bg-red-50 border-red-200 text-red-600 hover:bg-red-100'
-                  : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
-              }`}
-            >
-              <svg
-                className={`w-4 h-4 ${isFavorited ? 'fill-red-500' : ''}`}
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-                fill={isFavorited ? 'currentColor' : 'none'}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
+            <Button
+              variant={isFavorited ? 'secondary' : 'secondary'}
+              size="sm"
+              leadingIcon={
+                <Heart
+                  className={cn('h-4 w-4', isFavorited && 'fill-danger text-danger')}
                 />
-              </svg>
-              {isFavorited ? 'Запазено' : 'Запази'}
-            </button>
+              }
+              onClick={() => toggleFavorite.mutate()}
+              className={cn(isFavorited && 'border-danger/30 text-danger hover:bg-danger-soft')}
+            >
+              {isFavorited ? 'Запазена' : 'Запази'}
+            </Button>
           )}
           {isOwner && (
             <Link
               to={`/listings/${id}/edit`}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+              className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-medium text-primary-fg hover:bg-primary-hover transition-colors"
             >
-              Редактирай обявата
+              <Edit className="h-4 w-4" /> Редактирай
             </Link>
           )}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-6">
-          {images.length > 0 ? (
-            <div className="space-y-3">
-              <div className="aspect-[16/10] bg-gray-100 rounded-xl overflow-hidden">
-                <img
-                  src={images[activeImage]?.url}
-                  alt={listing.title}
-                  className="w-full h-full object-cover"
-                />
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:gap-8">
+        <div className="space-y-6 lg:col-span-2">
+          <Gallery images={images} title={listing.title} active={activeImage} setActive={setActiveImage} />
+
+          <section className="card-shell p-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h1 className="text-2xl font-semibold tracking-tight text-fg">{listing.title}</h1>
+                <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-fg-muted">
+                  <span className="inline-flex items-center gap-1">
+                    <Calendar className="h-3.5 w-3.5" /> {formatDate(listing.createdAt)}
+                  </span>
+                  {listing.city && (
+                    <span className="inline-flex items-center gap-1">
+                      <MapPin className="h-3.5 w-3.5" /> {listing.city}
+                    </span>
+                  )}
+                </p>
               </div>
-              {images.length > 1 && (
-                <div className="flex gap-2 overflow-x-auto pb-2">
-                  {images.map((img, i) => (
-                    <button
-                      key={img.id}
-                      onClick={() => setActiveImage(i)}
-                      className={`flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-colors ${
-                        i === activeImage ? 'border-blue-600' : 'border-transparent'
-                      }`}
-                    >
-                      <img
-                        src={img.url}
-                        alt=""
-                        className="w-full h-full object-cover"
-                      />
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="aspect-[16/10] bg-gray-100 rounded-xl flex items-center justify-center text-gray-400">
-              Няма налични снимки
-            </div>
-          )}
-
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-            <h1 className="text-2xl font-bold text-gray-900 mb-1">{listing.title}</h1>
-            <p className="text-sm text-gray-500 mb-4">
-              Публикувана на {formatDate(listing.createdAt)}
-              {listing.city && <> &middot; {listing.city}</>}
-            </p>
-
-            <div className="text-3xl font-bold text-blue-600 mb-2">
-              {formatPrice(listing.price)}
+              <div className="text-3xl font-bold tracking-tight text-fg sm:text-right">
+                {formatPrice(listing.price)}
+              </div>
             </div>
 
-            <div className="mb-6">
+            <div className="mt-4">
               <FairPriceBadge
                 analysis={listing.fairPriceAnalysis}
                 make={listing.makeName}
@@ -201,128 +188,183 @@ export function ListingDetailPage() {
               />
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-              <SpecItem label="Марка" value={listing.makeName} />
-              <SpecItem label="Модел" value={listing.modelName} />
-              <SpecItem label="Година" value={String(listing.year)} />
-              <SpecItem label="Пробег" value={formatMileage(listing.mileage)} />
-              <SpecItem label="Гориво" value={FUEL_TYPE_LABELS[listing.fuelType] ?? listing.fuelType} />
-              <SpecItem label="Скоростна кутия" value={TRANSMISSION_LABELS[listing.transmissionType] ?? listing.transmissionType} />
-              <SpecItem label="Тип каросерия" value={BODY_TYPE_LABELS[listing.bodyType] ?? listing.bodyType} />
-              <SpecItem label="Задвижване" value={DRIVE_TYPE_LABELS[listing.driveType] ?? listing.driveType} />
-              <SpecItem label="Цвят" value={COLOR_LABELS[listing.color] ?? listing.color} />
-              <SpecItem label="Състояние" value={CONDITION_LABELS[listing.condition] ?? listing.condition} />
-              {listing.horsePower && (
-                <SpecItem label="Мощност" value={`${listing.horsePower} к.с.`} />
+            <dl className="mt-6 grid grid-cols-2 gap-y-4 sm:grid-cols-3">
+              <Spec label="Марка" value={listing.makeName} />
+              <Spec label="Модел" value={listing.modelName} />
+              <Spec label="Година" value={String(listing.year)} />
+              <Spec label="Пробег" value={formatMileage(listing.mileage)} />
+              <Spec label="Гориво" value={FUEL_TYPE_LABELS[listing.fuelType] ?? listing.fuelType} />
+              <Spec label="Скоростна кутия" value={TRANSMISSION_LABELS[listing.transmissionType] ?? listing.transmissionType} />
+              <Spec label="Каросерия" value={BODY_TYPE_LABELS[listing.bodyType] ?? listing.bodyType} />
+              <Spec label="Задвижване" value={DRIVE_TYPE_LABELS[listing.driveType] ?? listing.driveType} />
+              <Spec label="Цвят" value={COLOR_LABELS[listing.color] ?? listing.color} />
+              <Spec label="Състояние" value={CONDITION_LABELS[listing.condition] ?? listing.condition} />
+              {listing.horsePower != null && (
+                <Spec label="Мощност" value={`${listing.horsePower} к.с.`} />
               )}
-              {listing.engineDisplacementCc && (
-                <SpecItem label="Двигател" value={`${listing.engineDisplacementCc} куб.см`} />
+              {listing.engineDisplacementCc != null && (
+                <Spec label="Двигател" value={`${listing.engineDisplacementCc} куб.см`} />
               )}
-              {listing.vinNumber && (
-                <SpecItem label="VIN" value={listing.vinNumber} />
-              )}
-            </div>
-          </div>
+              {listing.vinNumber && <Spec label="VIN" value={listing.vinNumber} />}
+            </dl>
+          </section>
 
-          {priceHistory.length > 0 && (
-            <PriceHistoryCard history={priceHistory} />
-          )}
+          {priceHistory.length > 0 && <PriceHistoryCard history={priceHistory} />}
 
           {listing.description && (
-            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-              <h2 className="text-lg font-semibold text-gray-900 mb-3">Описание</h2>
-              <p className="text-gray-700 whitespace-pre-line">{listing.description}</p>
-            </div>
+            <section className="card-shell p-6">
+              <h2 className="text-base font-semibold text-fg">Описание</h2>
+              <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-fg">
+                {listing.description}
+              </p>
+            </section>
           )}
 
           {Object.keys(featuresByCategory).length > 0 && (
-            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Екстри</h2>
-              {Object.entries(featuresByCategory).map(([category, items]) => (
-                <div key={category} className="mb-4 last:mb-0">
-                  <h3 className="text-sm font-medium text-gray-500 mb-2">{category}</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {items.map((f) => (
-                      <span
-                        key={f.id}
-                        className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm"
-                      >
-                        {f.name}
-                      </span>
-                    ))}
+            <section className="card-shell p-6">
+              <h2 className="text-base font-semibold text-fg">Екстри</h2>
+              <div className="mt-4 space-y-4">
+                {Object.entries(featuresByCategory).map(([category, items]) => (
+                  <div key={category}>
+                    <h3 className="text-xs font-semibold uppercase tracking-wide text-fg-subtle">
+                      {category}
+                    </h3>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {items.map((f) => (
+                        <Badge key={f.id} tone="primary" size="md" icon={<CheckCircle2 className="h-3 w-3" />}>
+                          {f.name}
+                        </Badge>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            </section>
           )}
         </div>
 
-        <div className="space-y-6">
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 sticky top-24">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Продавач</h2>
-            <div className="space-y-3">
+        <aside className="space-y-4">
+          <div className="card-shell p-6 lg:sticky lg:top-24">
+            <div className="flex items-center gap-3">
+              <div className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-primary-soft text-primary">
+                <UserIcon className="h-5 w-5" />
+              </div>
               <div>
-                <p className="font-medium text-gray-900">{listing.sellerName}</p>
+                <p className="font-semibold text-fg">{listing.sellerName}</p>
                 {listing.sellerCity && (
-                  <p className="text-sm text-gray-500">{listing.sellerCity}</p>
-                )}
-                {listing.sellerMemberSince && (
-                  <p className="text-xs text-gray-400 mt-1">
-                    Член от {formatDate(listing.sellerMemberSince)}
-                  </p>
+                  <p className="text-xs text-fg-muted">{listing.sellerCity}</p>
                 )}
               </div>
-
-              {listing.sellerPhone && (
-                showPhone ? (
-                  <a
-                    href={`tel:${listing.sellerPhone}`}
-                    className="block w-full bg-green-600 text-white text-center py-2.5 rounded-lg font-medium hover:bg-green-700 transition-colors"
-                  >
-                    {listing.sellerPhone}
-                  </a>
-                ) : (
-                  <button
-                    onClick={() => setShowPhone(true)}
-                    className="block w-full bg-green-600 text-white text-center py-2.5 rounded-lg font-medium hover:bg-green-700 transition-colors"
-                  >
-                    Покажи телефон
-                  </button>
-                )
-              )}
-
-              {listing.sellerEmail && !isOwner && (
-                <div className="pt-3 border-t border-gray-100">
-                  <h3 className="text-sm font-medium text-gray-700 mb-2">Свържи се с продавача</h3>
-                  <textarea
-                    value={contactMessage}
-                    onChange={(e) => setContactMessage(e.target.value)}
-                    rows={3}
-                    placeholder={`Здравейте, интересувам се от вашия ${listing.makeName} ${listing.modelName}...`}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none resize-none mb-2"
-                  />
-                  <button
-                    onClick={handleSendMessage}
-                    disabled={!contactMessage.trim()}
-                    className="w-full bg-blue-600 text-white py-2.5 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
-                  >
-                    Изпрати съобщение
-                  </button>
-                </div>
-              )}
             </div>
+            {listing.sellerMemberSince && (
+              <p className="mt-2 text-xs text-fg-subtle">
+                Член от {formatDate(listing.sellerMemberSince)}
+              </p>
+            )}
+
+            {listing.sellerPhone && (
+              showPhone ? (
+                <a
+                  href={`tel:${listing.sellerPhone}`}
+                  className="mt-5 inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-success px-4 text-sm font-medium text-white hover:opacity-90 transition-opacity"
+                >
+                  <Phone className="h-4 w-4" /> {listing.sellerPhone}
+                </a>
+              ) : (
+                <button
+                  onClick={() => setShowPhone(true)}
+                  className="mt-5 inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-success px-4 text-sm font-medium text-white hover:opacity-90 transition-opacity"
+                >
+                  <Phone className="h-4 w-4" /> Покажи телефон
+                </button>
+              )
+            )}
+
+            {listing.sellerEmail && !isOwner && (
+              <div className="mt-5 border-t border-border pt-5">
+                <h3 className="text-sm font-medium text-fg">Свържи се с продавача</h3>
+                <p className="mt-1 text-xs text-fg-muted inline-flex items-center gap-1">
+                  <Mail className="h-3 w-3" /> {listing.sellerEmail}
+                </p>
+                <Textarea
+                  value={contactMessage}
+                  onChange={(e) => setContactMessage(e.target.value)}
+                  rows={3}
+                  placeholder={`Здравейте, интересувам се от вашия ${listing.makeName} ${listing.modelName}...`}
+                  className="mt-3"
+                />
+                <Button
+                  variant="primary"
+                  fullWidth
+                  className="mt-2"
+                  leadingIcon={<Send className="h-4 w-4" />}
+                  onClick={handleSendMessage}
+                  disabled={!contactMessage.trim()}
+                >
+                  Изпрати съобщение
+                </Button>
+              </div>
+            )}
           </div>
-        </div>
+        </aside>
       </div>
+    </Container>
+  );
+}
+
+function Gallery({
+  images,
+  title,
+  active,
+  setActive,
+}: {
+  images: { id: number; url: string }[];
+  title: string;
+  active: number;
+  setActive: (i: number) => void;
+}) {
+  if (images.length === 0) {
+    return (
+      <div className="card-shell flex aspect-[16/9] items-center justify-center text-fg-subtle">
+        <Car className="h-12 w-12" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="overflow-hidden rounded-2xl bg-surface-soft border border-border">
+        <img
+          src={images[active]?.url}
+          alt={title}
+          className="aspect-[16/9] w-full object-cover"
+        />
+      </div>
+      {images.length > 1 && (
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {images.map((img, i) => (
+            <button
+              key={img.id}
+              onClick={() => setActive(i)}
+              className={cn(
+                'h-16 w-20 flex-shrink-0 overflow-hidden rounded-lg border-2 transition-colors',
+                i === active ? 'border-primary' : 'border-transparent opacity-70 hover:opacity-100',
+              )}
+            >
+              <img src={img.url} alt="" className="h-full w-full object-cover" />
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
-function SpecItem({ label, value }: { label: string; value: string }) {
+function Spec({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className="text-xs text-gray-500 uppercase tracking-wide">{label}</dt>
-      <dd className="text-sm font-medium text-gray-900 mt-0.5">{value}</dd>
+      <dt className="text-[11px] uppercase tracking-wide text-fg-subtle">{label}</dt>
+      <dd className="mt-0.5 text-sm font-medium text-fg">{value}</dd>
     </div>
   );
 }
@@ -339,52 +381,40 @@ function FairPriceBadge({
   year: number;
 }) {
   if (!analysis) {
-    return (
-      <span className="text-xs text-gray-500">Недостатъчно данни за сравнение</span>
-    );
+    return <span className="text-xs text-fg-subtle">Недостатъчно данни за сравнение</span>;
   }
 
   const tooltip = `Сравнено с ${analysis.sampleSize} активни обяви за ${make} ${model} (${year - 2}-${year + 2})`;
   const absPct = Math.abs(analysis.percentDifference).toFixed(0);
-  const baseClass = 'rounded-full px-3 py-1 text-sm font-medium inline-flex items-center gap-1 border';
 
   if (analysis.position === 'below') {
     return (
-      <div className="flex flex-col gap-1">
-        <span title={tooltip} className={`${baseClass} bg-green-100 text-green-800 border-green-200`}>
-          <svg className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-            <path fillRule="evenodd" d="M10 3a1 1 0 011 1v9.586l3.293-3.293a1 1 0 111.414 1.414l-5 5a1 1 0 01-1.414 0l-5-5a1 1 0 111.414-1.414L9 13.586V4a1 1 0 011-1z" clipRule="evenodd" />
-          </svg>
+      <div className="space-y-1" title={tooltip}>
+        <Badge tone="success" size="md" icon={<TrendingDown className="h-3 w-3" />}>
           {absPct}% под пазарната цена
-        </span>
-        <span className="text-xs text-gray-500">спрямо {analysis.sampleSize} обяви</span>
+        </Badge>
+        <p className="text-xs text-fg-subtle">спрямо {analysis.sampleSize} обяви</p>
       </div>
     );
   }
 
   if (analysis.position === 'above') {
     return (
-      <div className="flex flex-col gap-1">
-        <span title={tooltip} className={`${baseClass} bg-amber-100 text-amber-800 border-amber-200`}>
-          <svg className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-            <path fillRule="evenodd" d="M10 17a1 1 0 01-1-1V6.414L5.707 9.707a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0l5 5a1 1 0 01-1.414 1.414L11 6.414V16a1 1 0 01-1 1z" clipRule="evenodd" />
-          </svg>
+      <div className="space-y-1" title={tooltip}>
+        <Badge tone="warning" size="md" icon={<TrendingUp className="h-3 w-3" />}>
           {absPct}% над пазарната цена
-        </span>
-        <span className="text-xs text-gray-500">спрямо {analysis.sampleSize} обяви</span>
+        </Badge>
+        <p className="text-xs text-fg-subtle">спрямо {analysis.sampleSize} обяви</p>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-1">
-      <span title={tooltip} className={`${baseClass} bg-gray-100 text-gray-700 border-gray-200`}>
-        <svg className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-          <path fillRule="evenodd" d="M3 7a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 6a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
-        </svg>
+    <div className="space-y-1" title={tooltip}>
+      <Badge tone="neutral" size="md" icon={<Minus className="h-3 w-3" />}>
         На пазарната цена
-      </span>
-      <span className="text-xs text-gray-500">спрямо {analysis.sampleSize} обяви</span>
+      </Badge>
+      <p className="text-xs text-fg-subtle">спрямо {analysis.sampleSize} обяви</p>
     </div>
   );
 }
@@ -392,12 +422,12 @@ function FairPriceBadge({
 function PriceHistoryCard({ history }: { history: { price: number; recordedAt: string }[] }) {
   if (history.length === 1) {
     return (
-      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-        <h2 className="text-lg font-semibold text-gray-900 mb-2">Ценова история</h2>
-        <p className="text-sm text-gray-500">
-          Без промени в цената &middot; {formatDate(history[0].recordedAt)}
+      <section className="card-shell p-6">
+        <h2 className="text-base font-semibold text-fg">Ценова история</h2>
+        <p className="mt-2 text-sm text-fg-muted">
+          Без промени в цената · {formatDate(history[0].recordedAt)}
         </p>
-      </div>
+      </section>
     );
   }
 
@@ -407,8 +437,18 @@ function PriceHistoryCard({ history }: { history: { price: number; recordedAt: s
   const pct = Math.abs((diff / first) * 100).toFixed(1);
 
   return (
-    <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-      <h2 className="text-lg font-semibold text-gray-900 mb-4">Ценова история</h2>
+    <section className="card-shell p-6">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="text-base font-semibold text-fg">Ценова история</h2>
+        <span
+          className={cn(
+            'text-xs font-medium',
+            diff < 0 ? 'text-success' : diff > 0 ? 'text-danger' : 'text-fg-muted',
+          )}
+        >
+          {diff < 0 ? `↓ ${pct}%` : diff > 0 ? `↑ ${pct}%` : '— без промяна'}
+        </span>
+      </div>
       <ResponsiveContainer width="100%" height={200}>
         <LineChart
           data={history.map((p) => ({
@@ -416,25 +456,16 @@ function PriceHistoryCard({ history }: { history: { price: number; recordedAt: s
             price: p.price,
           }))}
         >
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="date" tick={{ fontSize: 12 }} />
-          <YAxis tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 12 }} />
-          <Tooltip formatter={(value: number) => [formatPrice(value), 'Цена']} />
-          <Line type="stepAfter" dataKey="price" stroke="#3b82f6" strokeWidth={2} dot={{ fill: '#3b82f6', r: 4 }} />
+          <CartesianGrid strokeDasharray="3 3" stroke="#e6e8ee" />
+          <XAxis dataKey="date" tick={{ fontSize: 12, fill: '#64748b' }} stroke="#cbd5e1" />
+          <YAxis tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 12, fill: '#64748b' }} stroke="#cbd5e1" />
+          <Tooltip formatter={(value) => [formatPrice(Number(value)), 'Цена']} />
+          <Line type="stepAfter" dataKey="price" stroke="#2563eb" strokeWidth={2} dot={{ fill: '#2563eb', r: 3 }} />
         </LineChart>
       </ResponsiveContainer>
-      <div className="mt-3 flex items-center gap-4 text-xs text-gray-500">
-        <span className={diff < 0 ? 'text-green-600 font-medium' : diff > 0 ? 'text-red-600 font-medium' : ''}>
-          {diff < 0
-            ? `Цената спадна с ${pct}%`
-            : diff > 0
-              ? `Цената се повиши с ${pct}%`
-              : 'Без промени в цената'}
-        </span>
-        <span>
-          {history.length} промени в цената (текуща {formatPrice(last)}, първоначална {formatPrice(first)})
-        </span>
-      </div>
-    </div>
+      <p className="mt-3 text-xs text-fg-subtle">
+        {history.length} промени · текуща {formatPrice(last)} · първоначална {formatPrice(first)}
+      </p>
+    </section>
   );
 }

@@ -3,8 +3,11 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Link, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
+import { AlertCircle } from 'lucide-react';
 import { authApi } from '../api/auth';
 import { useAuthStore } from '../store/authStore';
+import { AuthLayout } from '../components/layout/AuthLayout';
+import { Button, Field, Input } from '../components/ui';
 
 const registerSchema = z
   .object({
@@ -33,9 +36,7 @@ export function RegisterPage() {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<RegisterForm>({
-    resolver: zodResolver(registerSchema),
-  });
+  } = useForm<RegisterForm>({ resolver: zodResolver(registerSchema) });
 
   const onSubmit = async (data: RegisterForm) => {
     try {
@@ -45,152 +46,80 @@ export function RegisterPage() {
       setAuth(response);
       navigate('/');
     } catch (err: unknown) {
-      const message =
-        err instanceof Error
-          ? err.message
-          : 'Неуспешна регистрация. Опитай отново.';
+      const message = err instanceof Error ? err.message : 'Неуспешна регистрация. Опитай отново.';
       setError(message);
     }
   };
 
   return (
-    <div className="min-h-[calc(100vh-64px)] flex items-center justify-center px-4 py-12">
-      <div className="w-full max-w-md">
-        <h1 className="text-3xl font-bold text-gray-900 text-center mb-8">
-          Създай профил
-        </h1>
-
-        {error && (
-          <div className="bg-red-50 text-red-700 p-3 rounded-lg mb-4 text-sm">
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Име
-              </label>
-              <input
-                type="text"
-                {...register('firstName')}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Фамилия
-              </label>
-              <input
-                type="text"
-                {...register('lastName')}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Имейл *
-            </label>
-            <input
-              type="email"
-              {...register('email')}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-            />
-            {errors.email && (
-              <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Потребителско име *
-            </label>
-            <input
-              type="text"
-              {...register('userName')}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-            />
-            {errors.userName && (
-              <p className="text-red-500 text-sm mt-1">
-                {errors.userName.message}
-              </p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Парола *
-            </label>
-            <input
-              type="password"
-              {...register('password')}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-            />
-            {errors.password && (
-              <p className="text-red-500 text-sm mt-1">
-                {errors.password.message}
-              </p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Потвърди парола *
-            </label>
-            <input
-              type="password"
-              {...register('confirmPassword')}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-            />
-            {errors.confirmPassword && (
-              <p className="text-red-500 text-sm mt-1">
-                {errors.confirmPassword.message}
-              </p>
-            )}
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Телефон
-              </label>
-              <input
-                type="tel"
-                {...register('phoneNumber')}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Град
-              </label>
-              <input
-                type="text"
-                {...register('city')}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-              />
-            </div>
-          </div>
-
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full bg-blue-600 text-white py-2.5 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
-          >
-            {isSubmitting ? 'Създаване на профил...' : 'Създай профил'}
-          </button>
-        </form>
-
-        <p className="text-center text-gray-600 mt-6">
+    <AuthLayout
+      title="Създай профил"
+      description="Регистрирай се, за да публикуваш обяви и да запазваш любими."
+      footer={
+        <>
           Вече имаш профил?{' '}
-          <Link to="/login" className="text-blue-600 hover:underline">
+          <Link to="/login" className="font-medium text-primary hover:underline">
             Вход
           </Link>
-        </p>
-      </div>
-    </div>
+        </>
+      }
+    >
+      {error && (
+        <div className="mb-4 flex items-start gap-2 rounded-lg border border-danger/30 bg-danger-soft p-3 text-sm text-danger">
+          <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Име">
+            <Input autoComplete="given-name" {...register('firstName')} />
+          </Field>
+          <Field label="Фамилия">
+            <Input autoComplete="family-name" {...register('lastName')} />
+          </Field>
+        </div>
+
+        <Field label="Имейл" required error={errors.email?.message}>
+          <Input type="email" autoComplete="email" invalid={!!errors.email} {...register('email')} />
+        </Field>
+
+        <Field label="Потребителско име" required error={errors.userName?.message}>
+          <Input autoComplete="username" invalid={!!errors.userName} {...register('userName')} />
+        </Field>
+
+        <Field label="Парола" required error={errors.password?.message}>
+          <Input
+            type="password"
+            autoComplete="new-password"
+            invalid={!!errors.password}
+            {...register('password')}
+          />
+        </Field>
+
+        <Field label="Потвърди парола" required error={errors.confirmPassword?.message}>
+          <Input
+            type="password"
+            autoComplete="new-password"
+            invalid={!!errors.confirmPassword}
+            {...register('confirmPassword')}
+          />
+        </Field>
+
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Телефон">
+            <Input type="tel" autoComplete="tel" {...register('phoneNumber')} />
+          </Field>
+          <Field label="Град">
+            <Input autoComplete="address-level2" {...register('city')} />
+          </Field>
+        </div>
+
+        <Button type="submit" variant="primary" size="lg" fullWidth loading={isSubmitting}>
+          {isSubmitting ? 'Създаване на профил...' : 'Създай профил'}
+        </Button>
+      </form>
+    </AuthLayout>
   );
 }

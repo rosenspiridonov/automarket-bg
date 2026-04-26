@@ -1,4 +1,6 @@
 import { isRouteErrorResponse, useRouteError, Link } from 'react-router-dom';
+import { AlertTriangle, Home, RotateCw } from 'lucide-react';
+import { Button, Container } from './ui';
 
 export function RouteErrorBoundary() {
   const error = useRouteError();
@@ -16,25 +18,28 @@ export function RouteErrorBoundary() {
   }
 
   return (
-    <div className="mx-auto max-w-xl px-4 py-16 text-center">
-      <h1 className="text-2xl font-semibold text-gray-900">{title}</h1>
-      <p className="mt-4 text-gray-600">{message}</p>
-      <div className="mt-8 flex justify-center gap-3">
-        <button
+    <Container size="sm" className="py-16 text-center">
+      <div className="mx-auto mb-6 inline-flex h-14 w-14 items-center justify-center rounded-full bg-danger-soft text-danger">
+        <AlertTriangle className="h-6 w-6" />
+      </div>
+      <h1 className="text-2xl font-semibold tracking-tight text-fg">{title}</h1>
+      <p className="mt-2 text-sm text-fg-muted">{message}</p>
+      <div className="mt-6 flex flex-wrap justify-center gap-3">
+        <Button
+          variant="primary"
           onClick={() => window.location.reload()}
-          className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          leadingIcon={<RotateCw className="h-4 w-4" />}
         >
           Презареди
-        </button>
+        </Button>
         {status !== 404 && (
-          <Link
-            to="/"
-            className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-          >
-            Към началото
+          <Link to="/">
+            <Button variant="secondary" leadingIcon={<Home className="h-4 w-4" />}>
+              Към началото
+            </Button>
           </Link>
         )}
       </div>
-    </div>
+    </Container>
   );
 }

@@ -1,5 +1,7 @@
 import { Component } from 'react';
 import type { ErrorInfo, ReactNode } from 'react';
+import { AlertTriangle, RotateCw } from 'lucide-react';
+import { Button } from './ui';
 
 interface Props {
   children: ReactNode;
@@ -27,23 +29,25 @@ export class ErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-          <div className="text-center max-w-md">
-            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <svg className="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-              </svg>
+        <div className="flex min-h-screen items-center justify-center bg-bg px-4">
+          <div className="max-w-md text-center">
+            <div className="mx-auto mb-6 inline-flex h-14 w-14 items-center justify-center rounded-full bg-danger-soft text-danger">
+              <AlertTriangle className="h-6 w-6" />
             </div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Възникна грешка</h1>
-            <p className="text-gray-600 mb-6">
+            <h1 className="text-2xl font-semibold tracking-tight text-fg">Възникна грешка</h1>
+            <p className="mt-2 text-sm text-fg-muted">
               Появи се неочаквана грешка. Моля, опитай да презаредиш страницата.
             </p>
-            <button
-              onClick={() => window.location.reload()}
-              className="bg-blue-600 text-white px-6 py-2.5 rounded-lg font-medium hover:bg-blue-700 transition-colors"
-            >
-              Презареди страницата
-            </button>
+            <div className="mt-6 flex justify-center">
+              <Button
+                variant="primary"
+                size="lg"
+                onClick={() => window.location.reload()}
+                leadingIcon={<RotateCw className="h-4 w-4" />}
+              >
+                Презареди страницата
+              </Button>
+            </div>
           </div>
         </div>
       );

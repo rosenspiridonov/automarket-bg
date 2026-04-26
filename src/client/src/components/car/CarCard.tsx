@@ -1,10 +1,12 @@
 import { Link } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { Calendar, Fuel, Gauge, Heart, MapPin, Settings2 } from 'lucide-react';
 import type { CarListingDto } from '../../types/listing';
 import { formatPrice, formatMileage, timeAgo } from '../../utils/format';
 import { favoritesApi } from '../../api/favorites';
 import { useAuthStore } from '../../store/authStore';
 import { FUEL_TYPE_LABELS, TRANSMISSION_LABELS } from '../../utils/constants';
+import { cn } from '../../utils/cn';
 
 interface CarCardProps {
   listing: CarListingDto;
@@ -26,83 +28,91 @@ export function CarCard({ listing, isFavorited = false }: CarCardProps) {
   const handleFavoriteClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (isAuthenticated) {
-      toggleFavorite.mutate();
-    }
+    if (isAuthenticated) toggleFavorite.mutate();
   };
 
   return (
     <Link
       to={`/listings/${listing.id}`}
-      className="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100 hover:shadow-md transition-shadow group relative"
+      className="group card-shell overflow-hidden transition-all hover:shadow-[var(--shadow-card-hover)] hover:-translate-y-0.5"
     >
-      <div className="aspect-[16/10] bg-gray-100 overflow-hidden relative">
+      <div className="relative aspect-[16/10] overflow-hidden bg-surface-soft">
         {listing.primaryImageUrl ? (
           <img
             src={listing.primaryImageUrl}
             alt={listing.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            loading="lazy"
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-gray-400">
-            Без снимка
+          <div className="flex h-full w-full items-center justify-center text-xs text-fg-subtle">
+            Няма снимка
           </div>
         )}
+
         {isAuthenticated && (
           <button
             onClick={handleFavoriteClick}
-            className="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center hover:bg-white transition-colors"
             aria-label={isFavorited ? 'Премахни от любими' : 'Добави в любими'}
+            className={cn(
+              'absolute right-2 top-2 inline-flex h-9 w-9 items-center justify-center rounded-full backdrop-blur-sm transition-all',
+              isFavorited
+                ? 'bg-white/95 text-danger'
+                : 'bg-white/80 text-fg-muted hover:bg-white hover:text-fg',
+            )}
           >
-            <svg
-              className={`w-5 h-5 ${isFavorited ? 'text-red-500 fill-red-500' : 'text-gray-500'}`}
-              viewBox="0 0 24 24"
-              stroke="currentColor"
+            <Heart
+              className={cn('h-4 w-4', isFavorited && 'fill-current')}
               strokeWidth={2}
-              fill={isFavorited ? 'currentColor' : 'none'}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
-              />
-            </svg>
+            />
           </button>
         )}
+
+        <div className="absolute bottom-2 left-2 rounded-full bg-fg/90 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-sm">
+          {formatPrice(listing.price)}
+        </div>
       </div>
+
       <div className="p-4">
-        <div className="flex items-start justify-between gap-2 mb-2">
-          <h3 className="font-semibold text-gray-900 line-clamp-1">
-            {listing.title}
-          </h3>
-          <span className="text-lg font-bold text-blue-600 whitespace-nowrap">
-            {formatPrice(listing.price)}
-          </span>
-        </div>
-        <p className="text-sm text-gray-500 mb-3">
-          {listing.makeName} {listing.modelName}, {listing.year}
-        </p>
-        <div className="flex flex-wrap gap-2 text-xs text-gray-600">
-          <span className="bg-gray-100 px-2 py-1 rounded">
-            {formatMileage(listing.mileage)}
-          </span>
-          <span className="bg-gray-100 px-2 py-1 rounded">
-            {FUEL_TYPE_LABELS[listing.fuelType] ?? listing.fuelType}
-          </span>
-          <span className="bg-gray-100 px-2 py-1 rounded">
-            {TRANSMISSION_LABELS[listing.transmissionType] ?? listing.transmissionType}
-          </span>
-          {listing.horsePower && (
-            <span className="bg-gray-100 px-2 py-1 rounded">
-              {listing.horsePower} к.с.
+        <h3 className="text-sm font-semibold text-fg line-clamp-1">
+          {listing.makeName} {listing.modelName}
+        </h3>
+        <p className="mt-0.5 text-xs text-fg-muted line-clamp-1">{listing.title}</p>
+
+        <dl className="mt-3 grid grid-cols-2 gap-y-1.5 text-xs text-fg-muted">
+          <SpecRow icon={<Calendar className="h-3.5 w-3.5" />} value={String(listing.year)} />
+          <SpecRow icon={<Gauge className="h-3.5 w-3.5" />} value={formatMileage(listing.mileage)} />
+          <SpecRow
+            icon={<Fuel className="h-3.5 w-3.5" />}
+            value={FUEL_TYPE_LABELS[listing.fuelType] ?? listing.fuelType}
+          />
+          <SpecRow
+            icon={<Settings2 className="h-3.5 w-3.5" />}
+            value={TRANSMISSION_LABELS[listing.transmissionType] ?? listing.transmissionType}
+          />
+        </dl>
+
+        <div className="mt-3 flex items-center justify-between border-t border-border pt-3 text-xs text-fg-subtle">
+          {listing.city ? (
+            <span className="inline-flex items-center gap-1">
+              <MapPin className="h-3 w-3" />
+              {listing.city}
             </span>
+          ) : (
+            <span />
           )}
-        </div>
-        <div className="flex items-center justify-between mt-3 text-xs text-gray-400">
-          {listing.city && <span>{listing.city}</span>}
           <span>{timeAgo(listing.createdAt)}</span>
         </div>
       </div>
     </Link>
+  );
+}
+
+function SpecRow({ icon, value }: { icon: React.ReactNode; value: string }) {
+  return (
+    <div className="inline-flex items-center gap-1.5">
+      <span className="text-fg-subtle">{icon}</span>
+      <span className="truncate">{value}</span>
+    </div>
   );
 }

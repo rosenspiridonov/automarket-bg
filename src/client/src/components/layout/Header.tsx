@@ -1,169 +1,243 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { Link, NavLink, useLocation } from 'react-router-dom';
+import {
+  BarChart3,
+  ChevronDown,
+  Heart,
+  LogOut,
+  Menu,
+  Plus,
+  Search,
+  Shield,
+  User,
+  X,
+} from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
+import { cn } from '../../utils/cn';
+
+const NAV_LINKS = [
+  { to: '/search', label: 'Търсене', icon: Search },
+  { to: '/analytics', label: 'Анализи', icon: BarChart3 },
+];
 
 export function Header() {
   const { isAuthenticated, user, logout } = useAuthStore();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
+  const accountRef = useRef<HTMLDivElement>(null);
+  const location = useLocation();
 
-  const closeMenu = () => setMobileOpen(false);
+  useEffect(() => {
+    setMobileOpen(false);
+    setAccountOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (!accountOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (accountRef.current && !accountRef.current.contains(e.target as Node)) {
+        setAccountOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [accountOpen]);
+
+  const isAdmin = user?.roles?.includes('Admin');
 
   return (
-    <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          <Link to="/" className="text-xl font-bold text-blue-600" onClick={closeMenu}>
-            AutoMarket BG
-          </Link>
+    <header className="sticky top-0 z-40 border-b border-border bg-surface/80 backdrop-blur supports-[backdrop-filter]:bg-surface/70">
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+        <Link to="/" className="flex items-center gap-2 font-semibold tracking-tight text-fg">
+          <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-fg text-white text-sm font-bold">
+            A
+          </span>
+          <span>AutoMarket BG</span>
+        </Link>
 
-          <nav className="hidden md:flex items-center gap-5">
-            <NavLinks isAuthenticated={isAuthenticated} user={user} logout={logout} />
-          </nav>
+        <nav className="hidden items-center gap-1 md:flex">
+          {NAV_LINKS.map(({ to, label }) => (
+            <NavLink
+              key={to}
+              to={to}
+              className={({ isActive }) =>
+                cn(
+                  'rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                  isActive ? 'text-fg bg-surface-soft' : 'text-fg-muted hover:text-fg hover:bg-surface-soft',
+                )
+              }
+            >
+              {label}
+            </NavLink>
+          ))}
+        </nav>
 
-          <button
-            onClick={() => setMobileOpen(!mobileOpen)}
-            className="md:hidden p-2 text-gray-600 hover:text-gray-900"
-            aria-label="Превключи менюто"
-          >
-            {mobileOpen ? (
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            ) : (
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-              </svg>
-            )}
-          </button>
+        <div className="hidden items-center gap-2 md:flex">
+          {isAuthenticated ? (
+            <>
+              <Link
+                to="/listings/new"
+                className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-medium text-primary-fg hover:bg-primary-hover transition-colors"
+              >
+                <Plus className="h-4 w-4" /> Публикувай обява
+              </Link>
+
+              <NavLink
+                to="/favorites"
+                title="Любими"
+                className={({ isActive }) =>
+                  cn(
+                    'inline-flex h-9 w-9 items-center justify-center rounded-lg transition-colors',
+                    isActive ? 'text-fg bg-surface-soft' : 'text-fg-muted hover:text-fg hover:bg-surface-soft',
+                  )
+                }
+              >
+                <Heart className="h-4 w-4" />
+              </NavLink>
+
+              <div ref={accountRef} className="relative">
+                <button
+                  onClick={() => setAccountOpen((s) => !s)}
+                  className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-1.5 py-1 pr-2.5 text-sm text-fg hover:bg-surface-soft transition-colors"
+                  aria-haspopup="menu"
+                  aria-expanded={accountOpen}
+                >
+                  <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-primary-soft text-primary text-xs font-semibold">
+                    {user?.userName.charAt(0).toUpperCase()}
+                  </span>
+                  <span className="max-w-[8rem] truncate text-xs font-medium">{user?.userName}</span>
+                  <ChevronDown className="h-3.5 w-3.5 text-fg-muted" />
+                </button>
+                {accountOpen && (
+                  <div
+                    role="menu"
+                    className="absolute right-0 mt-2 w-56 rounded-xl border border-border bg-surface p-1 shadow-[var(--shadow-pop)]"
+                  >
+                    <MenuLink to="/profile" icon={<User className="h-4 w-4" />}>Моят профил</MenuLink>
+                    <MenuLink to="/favorites" icon={<Heart className="h-4 w-4" />}>Любими</MenuLink>
+                    {isAdmin && (
+                      <MenuLink to="/admin" icon={<Shield className="h-4 w-4" />}>Администратор</MenuLink>
+                    )}
+                    <div className="my-1 border-t border-border" />
+                    <button
+                      onClick={() => logout()}
+                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-danger hover:bg-danger-soft"
+                    >
+                      <LogOut className="h-4 w-4" /> Изход
+                    </button>
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            <>
+              <Link
+                to="/login"
+                className="rounded-lg px-3 py-2 text-sm font-medium text-fg-muted hover:text-fg hover:bg-surface-soft transition-colors"
+              >
+                Вход
+              </Link>
+              <Link
+                to="/register"
+                className="inline-flex h-9 items-center justify-center rounded-lg bg-primary px-4 text-sm font-medium text-primary-fg hover:bg-primary-hover transition-colors"
+              >
+                Регистрация
+              </Link>
+            </>
+          )}
         </div>
+
+        <button
+          onClick={() => setMobileOpen((s) => !s)}
+          className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-fg-muted hover:bg-surface-soft md:hidden"
+          aria-label="Превключи менюто"
+        >
+          {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+        </button>
       </div>
 
       {mobileOpen && (
-        <nav className="md:hidden border-t border-gray-100 bg-white px-4 pb-4 pt-2 space-y-1">
-          <MobileNavLinks
-            isAuthenticated={isAuthenticated}
-            user={user}
-            logout={logout}
-            onNavigate={closeMenu}
-          />
+        <nav className="border-t border-border bg-surface px-4 pb-4 pt-2 md:hidden">
+          <div className="space-y-1">
+            {NAV_LINKS.map(({ to, label, icon: Icon }) => (
+              <MobileLink key={to} to={to} icon={<Icon className="h-4 w-4" />}>
+                {label}
+              </MobileLink>
+            ))}
+            {isAuthenticated && (
+              <>
+                <MobileLink to="/favorites" icon={<Heart className="h-4 w-4" />}>Любими</MobileLink>
+                <MobileLink to="/profile" icon={<User className="h-4 w-4" />}>{user?.userName}</MobileLink>
+                {isAdmin && (
+                  <MobileLink to="/admin" icon={<Shield className="h-4 w-4" />}>Администратор</MobileLink>
+                )}
+              </>
+            )}
+          </div>
+          <div className="mt-3 grid gap-2 border-t border-border pt-3">
+            {isAuthenticated ? (
+              <>
+                <Link
+                  to="/listings/new"
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-primary text-sm font-medium text-primary-fg"
+                >
+                  <Plus className="h-4 w-4" /> Публикувай обява
+                </Link>
+                <button
+                  onClick={() => logout()}
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-border text-sm font-medium text-danger hover:bg-danger-soft"
+                >
+                  <LogOut className="h-4 w-4" /> Изход
+                </button>
+              </>
+            ) : (
+              <>
+                <Link
+                  to="/login"
+                  className="inline-flex h-10 items-center justify-center rounded-lg border border-border text-sm font-medium text-fg"
+                >
+                  Вход
+                </Link>
+                <Link
+                  to="/register"
+                  className="inline-flex h-10 items-center justify-center rounded-lg bg-primary text-sm font-medium text-primary-fg"
+                >
+                  Регистрация
+                </Link>
+              </>
+            )}
+          </div>
         </nav>
       )}
     </header>
   );
 }
 
-interface NavLinksProps {
-  isAuthenticated: boolean;
-  user: { userName: string; roles?: string[] } | null;
-  logout: () => void;
-}
-
-function NavLinks({ isAuthenticated, user, logout }: NavLinksProps) {
-  const isAdmin = user?.roles?.includes('Admin');
-
+function MenuLink({ to, icon, children }: { to: string; icon: React.ReactNode; children: React.ReactNode }) {
   return (
-    <>
-      <Link to="/search" className="text-gray-600 hover:text-gray-900 transition-colors text-sm">
-        Търсене
-      </Link>
-      <Link to="/analytics" className="text-gray-600 hover:text-gray-900 transition-colors text-sm">
-        Анализи
-      </Link>
-
-      {isAuthenticated ? (
-        <>
-          <Link to="/favorites" className="text-gray-600 hover:text-gray-900 transition-colors text-sm">
-            Любими
-          </Link>
-          {isAdmin && (
-            <Link to="/admin" className="text-purple-600 hover:text-purple-800 transition-colors text-sm font-medium">
-              Администратор
-            </Link>
-          )}
-          <Link
-            to="/listings/new"
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 transition-colors"
-          >
-            Публикувай обява
-          </Link>
-          <Link to="/profile" className="text-gray-600 hover:text-gray-900 transition-colors text-sm">
-            {user?.userName}
-          </Link>
-          <button onClick={logout} className="text-gray-500 hover:text-gray-700 transition-colors text-sm">
-            Изход
-          </button>
-        </>
-      ) : (
-        <>
-          <Link to="/login" className="text-gray-600 hover:text-gray-900 transition-colors text-sm">
-            Вход
-          </Link>
-          <Link
-            to="/register"
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 transition-colors"
-          >
-            Регистрация
-          </Link>
-        </>
-      )}
-    </>
+    <Link
+      to={to}
+      className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-fg hover:bg-surface-soft"
+    >
+      <span className="text-fg-muted">{icon}</span>
+      {children}
+    </Link>
   );
 }
 
-interface MobileNavLinksProps extends NavLinksProps {
-  onNavigate: () => void;
-}
-
-function MobileNavLinks({ isAuthenticated, user, logout, onNavigate }: MobileNavLinksProps) {
-  const linkClass = 'block py-2.5 px-3 rounded-lg text-gray-700 hover:bg-gray-50 text-sm font-medium';
-  const isAdmin = user?.roles?.includes('Admin');
-
+function MobileLink({ to, icon, children }: { to: string; icon: React.ReactNode; children: React.ReactNode }) {
   return (
-    <>
-      <Link to="/search" className={linkClass} onClick={onNavigate}>Търсене</Link>
-      <Link to="/analytics" className={linkClass} onClick={onNavigate}>Анализи</Link>
-
-      {isAuthenticated ? (
-        <>
-          <Link to="/favorites" className={linkClass} onClick={onNavigate}>Любими</Link>
-          {isAdmin && (
-            <Link
-              to="/admin"
-              className="block py-2.5 px-3 rounded-lg text-purple-600 hover:bg-purple-50 text-sm font-medium"
-              onClick={onNavigate}
-            >
-              Администраторски панел
-            </Link>
-          )}
-          <Link to="/profile" className={linkClass} onClick={onNavigate}>
-            {user?.userName}
-          </Link>
-          <Link
-            to="/listings/new"
-            className="block py-2.5 px-3 rounded-lg bg-blue-600 text-white text-sm font-medium text-center hover:bg-blue-700"
-            onClick={onNavigate}
-          >
-            Публикувай обява
-          </Link>
-          <button
-            onClick={() => { logout(); onNavigate(); }}
-            className="block w-full text-left py-2.5 px-3 rounded-lg text-red-600 hover:bg-red-50 text-sm font-medium"
-          >
-            Изход
-          </button>
-        </>
-      ) : (
-        <>
-          <Link to="/login" className={linkClass} onClick={onNavigate}>Вход</Link>
-          <Link
-            to="/register"
-            className="block py-2.5 px-3 rounded-lg bg-blue-600 text-white text-sm font-medium text-center hover:bg-blue-700"
-            onClick={onNavigate}
-          >
-            Регистрация
-          </Link>
-        </>
-      )}
-    </>
+    <NavLink
+      to={to}
+      className={({ isActive }) =>
+        cn(
+          'flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium',
+          isActive ? 'bg-surface-soft text-fg' : 'text-fg-muted hover:bg-surface-soft hover:text-fg',
+        )
+      }
+    >
+      <span className="text-fg-muted">{icon}</span>
+      {children}
+    </NavLink>
   );
 }

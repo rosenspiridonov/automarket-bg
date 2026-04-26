@@ -8,11 +8,22 @@ import { analyticsApi } from '../api/analytics';
 import { makesApi } from '../api/makes';
 import { formatPrice } from '../utils/format';
 import { BODY_TYPE_LABELS } from '../utils/constants';
+import { Container, PageHeader, Select } from '../components/ui';
 
 const CHART_COLORS = [
-  '#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6',
-  '#ec4899', '#06b6d4', '#f97316', '#14b8a6', '#6366f1',
+  'var(--color-primary)',
+  '#ef4444',
+  '#10b981',
+  '#f59e0b',
+  '#8b5cf6',
+  '#ec4899',
+  '#06b6d4',
+  '#f97316',
+  '#14b8a6',
+  '#6366f1',
 ];
+
+const PRIMARY = 'var(--color-primary)';
 
 export function AnalyticsPage() {
   const [selectedMakeId, setSelectedMakeId] = useState<number | null>(null);
@@ -49,11 +60,14 @@ export function AnalyticsPage() {
   }));
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold text-gray-900 mb-8">Пазарни анализи</h1>
+    <Container className="py-8">
+      <PageHeader
+        title="Пазарни анализи"
+        description="Преглед на цените, обемите и тенденциите в обявите."
+      />
 
       {overview && (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+        <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
           <StatCard label="Общо обяви" value={overview.totalListings.toLocaleString()} />
           <StatCard label="Марки" value={String(overview.totalMakes)} />
           <StatCard label="Средна цена" value={formatPrice(overview.averagePrice)} />
@@ -63,34 +77,27 @@ export function AnalyticsPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">
-            Средна цена по марка
-          </h2>
+      <div className="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <ChartCard title="Средна цена по марка">
           {pricesByMake.length > 0 ? (
             <ResponsiveContainer width="100%" height={400}>
               <BarChart data={pricesByMake} layout="vertical" margin={{ left: 80 }}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis type="number" tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
-                <YAxis type="category" dataKey="makeName" width={70} tick={{ fontSize: 12 }} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                <XAxis type="number" tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} stroke="var(--color-fg-muted)" />
+                <YAxis type="category" dataKey="makeName" width={70} tick={{ fontSize: 12, fill: 'var(--color-fg)' }} stroke="var(--color-fg-muted)" />
                 <Tooltip
-                  formatter={(value: number) => [formatPrice(value), 'Средна цена']}
+                  formatter={(value) => [formatPrice(Number(value)), 'Средна цена']}
+                  contentStyle={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12 }}
                 />
-                <Bar dataKey="averagePrice" fill="#3b82f6" radius={[0, 4, 4, 0]} />
+                <Bar dataKey="averagePrice" fill={PRIMARY} radius={[0, 6, 6, 0]} />
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <div className="h-64 flex items-center justify-center text-gray-400">
-              Няма налични данни
-            </div>
+            <EmptyChart />
           )}
-        </div>
+        </ChartCard>
 
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">
-            Обяви по тип каросерия
-          </h2>
+        <ChartCard title="Обяви по тип каросерия">
           {localizedBodyTypes.length > 0 ? (
             <ResponsiveContainer width="100%" height={400}>
               <PieChart>
@@ -101,113 +108,140 @@ export function AnalyticsPage() {
                   cx="50%"
                   cy="50%"
                   outerRadius={140}
-                  label={({ bodyType, count }) => `${bodyType} (${count})`}
+                  label={((entry: unknown) => {
+                    const e = entry as { bodyType?: string; count?: number };
+                    return `${e.bodyType} (${e.count})`;
+                  }) as never}
                 >
                   {localizedBodyTypes.map((_, i) => (
                     <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip />
+                <Tooltip
+                  contentStyle={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12 }}
+                />
               </PieChart>
             </ResponsiveContainer>
           ) : (
-            <div className="h-64 flex items-center justify-center text-gray-400">
-              Няма налични данни
-            </div>
+            <EmptyChart />
           )}
-        </div>
+        </ChartCard>
       </div>
 
-      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 mb-8">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">
-            Цена по година на производство
-          </h2>
-          <select
+      <ChartCard
+        className="mb-6"
+        title="Цена по година на производство"
+        action={
+          <Select
             value={selectedMakeId ?? ''}
             onChange={(e) => setSelectedMakeId(e.target.value ? Number(e.target.value) : null)}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+            className="w-full sm:w-56"
           >
             <option value="">Избери марка</option>
             {makes.map((m) => (
               <option key={m.id} value={m.id}>{m.name}</option>
             ))}
-          </select>
-        </div>
-
+          </Select>
+        }
+      >
         {selectedMakeId && priceTrend.length > 0 ? (
           <ResponsiveContainer width="100%" height={350}>
             <LineChart data={priceTrend}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="year" />
-              <YAxis tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+              <XAxis dataKey="year" stroke="var(--color-fg-muted)" />
+              <YAxis tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} stroke="var(--color-fg-muted)" />
               <Tooltip
-                formatter={(value: number, name: string) => {
-                  if (name === 'averagePrice')
-                    return [formatPrice(value), 'Средна цена'];
-                  return [value, 'Обяви'];
+                formatter={(value, name) => {
+                  if (name === 'averagePrice') return [formatPrice(Number(value)), 'Средна цена'];
+                  return [String(value), 'Обяви'];
                 }}
+                contentStyle={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12 }}
               />
               <Line
                 type="monotone"
                 dataKey="averagePrice"
-                stroke="#3b82f6"
+                stroke={PRIMARY}
                 strokeWidth={2}
-                dot={{ fill: '#3b82f6' }}
+                dot={{ fill: PRIMARY, r: 4 }}
               />
             </LineChart>
           </ResponsiveContainer>
         ) : (
-          <div className="h-64 flex items-center justify-center text-gray-400">
+          <div className="flex h-64 items-center justify-center text-sm text-fg-subtle">
             {selectedMakeId ? 'Няма данни за тази марка' : 'Избери марка, за да видиш ценовите тенденции'}
           </div>
         )}
-      </div>
+      </ChartCard>
 
       {pricesByMake.length > 0 && (
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Ценови диапазон по марка</h2>
+        <ChartCard title="Ценови диапазон по марка">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="text-left py-3 px-4 font-medium text-gray-500">Марка</th>
-                  <th className="text-right py-3 px-4 font-medium text-gray-500">Обяви</th>
-                  <th className="text-right py-3 px-4 font-medium text-gray-500">Средна цена</th>
-                  <th className="text-right py-3 px-4 font-medium text-gray-500">Мин.</th>
-                  <th className="text-right py-3 px-4 font-medium text-gray-500">Макс.</th>
+                <tr className="border-b border-border text-fg-muted">
+                  <th className="px-4 py-3 text-left font-medium">Марка</th>
+                  <th className="px-4 py-3 text-right font-medium">Обяви</th>
+                  <th className="px-4 py-3 text-right font-medium">Средна цена</th>
+                  <th className="px-4 py-3 text-right font-medium">Мин.</th>
+                  <th className="px-4 py-3 text-right font-medium">Макс.</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-border/60">
                 {pricesByMake.map((row) => (
-                  <tr key={row.makeId} className="border-b border-gray-50 hover:bg-gray-50">
-                    <td className="py-3 px-4 font-medium text-gray-900">{row.makeName}</td>
-                    <td className="py-3 px-4 text-right text-gray-600">{row.listingCount}</td>
-                    <td className="py-3 px-4 text-right font-medium text-blue-600">
+                  <tr key={row.makeId} className="transition-colors hover:bg-surface-soft">
+                    <td className="px-4 py-3 font-medium text-fg">{row.makeName}</td>
+                    <td className="px-4 py-3 text-right text-fg-muted">{row.listingCount}</td>
+                    <td className="px-4 py-3 text-right font-semibold text-primary">
                       {formatPrice(row.averagePrice)}
                     </td>
-                    <td className="py-3 px-4 text-right text-gray-600">
-                      {formatPrice(row.minPrice)}
-                    </td>
-                    <td className="py-3 px-4 text-right text-gray-600">
-                      {formatPrice(row.maxPrice)}
-                    </td>
+                    <td className="px-4 py-3 text-right text-fg-muted">{formatPrice(row.minPrice)}</td>
+                    <td className="px-4 py-3 text-right text-fg-muted">{formatPrice(row.maxPrice)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        </div>
+        </ChartCard>
       )}
-    </div>
+    </Container>
   );
 }
 
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 text-center">
-      <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">{label}</p>
-      <p className="text-lg font-bold text-gray-900">{value}</p>
+    <div className="card-shell p-4">
+      <p className="text-[11px] font-medium uppercase tracking-wide text-fg-subtle">{label}</p>
+      <p className="mt-1 text-lg font-semibold text-fg">{value}</p>
+    </div>
+  );
+}
+
+function ChartCard({
+  title,
+  action,
+  children,
+  className,
+}: {
+  title: string;
+  action?: React.ReactNode;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <section className={`card-shell p-6 ${className ?? ''}`}>
+      <header className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-base font-semibold text-fg">{title}</h2>
+        {action}
+      </header>
+      {children}
+    </section>
+  );
+}
+
+function EmptyChart() {
+  return (
+    <div className="flex h-64 items-center justify-center text-sm text-fg-subtle">
+      Няма налични данни
     </div>
   );
 }

@@ -2,10 +2,13 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import toast from 'react-hot-toast';
+import { Bookmark, Car, Plus, SlidersHorizontal, Trash2 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { listingsApi } from '../api/listings';
 import { savedSearchesApi } from '../api/savedSearches';
 import { CarCard } from '../components/car/CarCard';
+import { Button, CarCardSkeleton, Container, EmptyState, Skeleton } from '../components/ui';
+import { cn } from '../utils/cn';
 import type { SavedSearchDto } from '../types/savedSearch';
 
 type Tab = 'listings' | 'saved-searches';
@@ -38,16 +41,17 @@ export function ProfilePage() {
 
   if (!isAuthenticated || !user) {
     return (
-      <div className="max-w-7xl mx-auto px-4 py-16 text-center">
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">Необходим е вход</h2>
-        <p className="text-gray-600 mb-6">Трябва да си влязъл, за да видиш профила си.</p>
-        <Link
-          to="/login"
-          className="bg-blue-600 text-white px-6 py-2.5 rounded-lg font-medium hover:bg-blue-700 transition-colors"
-        >
-          Вход
-        </Link>
-      </div>
+      <Container size="md" className="py-16">
+        <EmptyState
+          title="Необходим е вход"
+          description="Трябва да си влязъл, за да видиш профила си."
+          action={
+            <Button onClick={() => navigate('/login')} variant="primary">
+              Вход
+            </Button>
+          }
+        />
+      </Container>
     );
   }
 
@@ -66,83 +70,90 @@ export function ProfilePage() {
     }
   };
 
-  const tabs: { key: Tab; label: string }[] = [
-    { key: 'listings', label: `Моите обяви (${myListings.length})` },
-    { key: 'saved-searches', label: 'Запазени търсения' },
+  const tabs: { key: Tab; label: string; count?: number; icon: React.ReactNode }[] = [
+    { key: 'listings', label: 'Моите обяви', count: myListings.length, icon: <Car className="h-4 w-4" /> },
+    { key: 'saved-searches', label: 'Запазени търсения', icon: <Bookmark className="h-4 w-4" /> },
   ];
 
+  const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ');
+
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
-      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 mb-8">
-        <div className="flex items-center gap-4">
-          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 text-xl font-bold">
+    <Container className="py-8">
+      <section className="card-shell mb-6 p-6">
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-primary-soft text-2xl font-semibold text-primary">
             {user.userName.charAt(0).toUpperCase()}
           </div>
-          <div>
-            <h1 className="text-xl font-bold text-gray-900">{user.userName}</h1>
-            <p className="text-gray-500 text-sm">{user.email}</p>
-            {user.firstName && user.lastName && (
-              <p className="text-gray-600 text-sm">{user.firstName} {user.lastName}</p>
+          <div className="min-w-0 flex-1">
+            <h1 className="truncate text-xl font-semibold text-fg">{fullName || user.userName}</h1>
+            <p className="truncate text-sm text-fg-muted">{user.email}</p>
+            {fullName && (
+              <p className="truncate text-xs text-fg-subtle">@{user.userName}</p>
             )}
           </div>
+          <Link to="/listings/new">
+            <Button variant="primary" leadingIcon={<Plus className="h-4 w-4" />}>
+              Нова обява
+            </Button>
+          </Link>
         </div>
-      </div>
+      </section>
 
-      <div className="flex items-center gap-1 mb-6 border-b border-gray-200">
+      <div className="mb-6 flex flex-wrap items-center gap-1 border-b border-border">
         {tabs.map((tab) => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+            className={cn(
+              'inline-flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition-colors',
               activeTab === tab.key
-                ? 'border-blue-600 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
+                ? 'border-primary text-primary'
+                : 'border-transparent text-fg-muted hover:text-fg',
+            )}
           >
-            {tab.label}
+            {tab.icon}
+            <span>{tab.label}</span>
+            {typeof tab.count === 'number' && (
+              <span
+                className={cn(
+                  'rounded-full px-2 py-0.5 text-[11px] font-semibold',
+                  activeTab === tab.key ? 'bg-primary-soft text-primary' : 'bg-surface-soft text-fg-muted',
+                )}
+              >
+                {tab.count}
+              </span>
+            )}
           </button>
         ))}
-        <div className="ml-auto">
-          <Link
-            to="/listings/new"
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
-          >
-            + Нова обява
-          </Link>
-        </div>
       </div>
 
       {activeTab === 'listings' && (
         <>
           {loadingListings ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="animate-pulse bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100">
-                  <div className="h-44 bg-gray-200" />
-                  <div className="p-4 space-y-3">
-                    <div className="h-4 bg-gray-200 rounded w-3/4" />
-                    <div className="h-3 bg-gray-200 rounded w-1/2" />
-                  </div>
-                </div>
+                <CarCardSkeleton key={i} />
               ))}
             </div>
           ) : myListings.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {myListings.map((listing) => (
                 <CarCard key={listing.id} listing={listing} />
               ))}
             </div>
           ) : (
-            <div className="text-center py-16 bg-white rounded-xl border border-gray-100">
-              <p className="text-lg text-gray-500 mb-2">Все още няма обяви</p>
-              <p className="text-sm text-gray-400 mb-6">Започни да продаваш, като добавиш първата си кола.</p>
-              <Link
-                to="/listings/new"
-                className="bg-blue-600 text-white px-6 py-2.5 rounded-lg font-medium hover:bg-blue-700 transition-colors"
-              >
-                Публикувай обява
-              </Link>
-            </div>
+            <EmptyState
+              icon={<Car className="h-5 w-5" />}
+              title="Все още няма обяви"
+              description="Започни да продаваш, като добавиш първата си кола."
+              action={
+                <Link to="/listings/new">
+                  <Button variant="primary" leadingIcon={<Plus className="h-4 w-4" />}>
+                    Публикувай обява
+                  </Button>
+                </Link>
+              }
+            />
           )}
         </>
       )}
@@ -152,9 +163,9 @@ export function ProfilePage() {
           {loadingSaved ? (
             <div className="space-y-3">
               {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="animate-pulse bg-white rounded-xl p-4 border border-gray-100">
-                  <div className="h-4 bg-gray-200 rounded w-1/3 mb-2" />
-                  <div className="h-3 bg-gray-200 rounded w-2/3" />
+                <div key={i} className="card-shell p-4">
+                  <Skeleton className="mb-2 h-4 w-1/3" />
+                  <Skeleton className="h-3 w-2/3" />
                 </div>
               ))}
             </div>
@@ -163,47 +174,50 @@ export function ProfilePage() {
               {savedSearches.map((search) => (
                 <div
                   key={search.id}
-                  className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex items-center justify-between"
+                  className="card-shell flex flex-wrap items-center justify-between gap-3 p-4"
                 >
-                  <div>
-                    <h3 className="font-medium text-gray-900">{search.name}</h3>
-                    <p className="text-xs text-gray-400 mt-1">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="truncate font-medium text-fg">{search.name}</h3>
+                    <p className="mt-0.5 text-xs text-fg-subtle">
                       Запазено на {new Date(search.createdAt).toLocaleDateString('bg-BG')}
                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <button
+                  <div className="flex flex-shrink-0 items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      leadingIcon={<SlidersHorizontal className="h-3.5 w-3.5" />}
                       onClick={() => applySavedSearch(search)}
-                      className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-sm font-medium hover:bg-blue-100 transition-colors"
                     >
                       Приложи
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
                       onClick={() => deleteSavedSearch.mutate(search.id)}
-                      className="px-3 py-1.5 bg-red-50 text-red-600 rounded-lg text-sm font-medium hover:bg-red-100 transition-colors"
+                      leadingIcon={<Trash2 className="h-3.5 w-3.5" />}
+                      className="text-danger hover:bg-danger-soft"
                     >
                       Изтрий
-                    </button>
+                    </Button>
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="text-center py-16 bg-white rounded-xl border border-gray-100">
-              <p className="text-lg text-gray-500 mb-2">Няма запазени търсения</p>
-              <p className="text-sm text-gray-400 mb-6">
-                Запази филтрите си от страницата за търсене, за да имаш бърз достъп до тях.
-              </p>
-              <Link
-                to="/search"
-                className="bg-blue-600 text-white px-6 py-2.5 rounded-lg font-medium hover:bg-blue-700 transition-colors"
-              >
-                Търсене на обяви
-              </Link>
-            </div>
+            <EmptyState
+              icon={<Bookmark className="h-5 w-5" />}
+              title="Няма запазени търсения"
+              description="Запази филтрите си от страницата за търсене, за да имаш бърз достъп до тях."
+              action={
+                <Link to="/search">
+                  <Button variant="primary">Търсене на обяви</Button>
+                </Link>
+              }
+            />
           )}
         </>
       )}
-    </div>
+    </Container>
   );
 }

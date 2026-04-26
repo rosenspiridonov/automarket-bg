@@ -6,8 +6,11 @@ import { useState, useEffect, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { useQuery } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
+import { Save, Upload, X } from 'lucide-react';
 import { listingsApi } from '../api/listings';
 import { featuresApi } from '../api/features';
+import { Button, Container, Field, Input, PageHeader, Select, Skeleton, Textarea } from '../components/ui';
+import { cn } from '../utils/cn';
 
 interface EditForm {
   title: string;
@@ -48,10 +51,7 @@ export function EditListingPage() {
     enabled: !!id,
   });
 
-  const { data: features = [] } = useQuery({
-    queryKey: ['features'],
-    queryFn: featuresApi.getAll,
-  });
+  const { data: features = [] } = useQuery({ queryKey: ['features'], queryFn: featuresApi.getAll });
 
   const {
     register, handleSubmit, watch, setValue, reset,
@@ -92,9 +92,7 @@ export function EditListingPage() {
     const current = selectedFeatures || [];
     setValue(
       'featureIds',
-      current.includes(featureId)
-        ? current.filter((f) => f !== featureId)
-        : [...current, featureId]
+      current.includes(featureId) ? current.filter((f) => f !== featureId) : [...current, featureId],
     );
   };
 
@@ -110,11 +108,7 @@ export function EditListingPage() {
   const onSubmit = async (data: EditForm) => {
     try {
       await listingsApi.update(Number(id), data);
-
-      if (newFiles.length > 0) {
-        await listingsApi.uploadImages(Number(id), newFiles);
-      }
-
+      if (newFiles.length > 0) await listingsApi.uploadImages(Number(id), newFiles);
       toast.success('Обявата е обновена успешно!');
       navigate(`/listings/${id}`);
     } catch {
@@ -128,181 +122,201 @@ export function EditListingPage() {
       acc[f.category].push(f);
       return acc;
     },
-    {} as Record<string, typeof features>
+    {} as Record<string, typeof features>,
   );
 
   if (loadingListing) {
     return (
-      <div className="max-w-3xl mx-auto px-4 py-8">
-        <div className="animate-pulse space-y-6">
-          <div className="h-8 bg-gray-200 rounded w-1/3" />
-          <div className="h-64 bg-gray-200 rounded-xl" />
-          <div className="h-64 bg-gray-200 rounded-xl" />
-        </div>
-      </div>
+      <Container size="md" className="py-8">
+        <Skeleton className="mb-6 h-8 w-1/3" />
+        <Skeleton className="mb-4 h-64 w-full rounded-2xl" />
+        <Skeleton className="h-64 w-full rounded-2xl" />
+      </Container>
     );
   }
 
   if (!listing) {
     return (
-      <div className="max-w-3xl mx-auto px-4 py-16 text-center">
-        <h2 className="text-2xl font-bold text-gray-900">Обявата не е намерена</h2>
-      </div>
+      <Container size="md" className="py-16 text-center">
+        <h2 className="text-xl font-semibold text-fg">Обявата не е намерена</h2>
+      </Container>
     );
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Редактирай обявата</h1>
+    <Container size="md" className="py-8">
+      <PageHeader title="Редактирай обявата" description="Можеш да обновиш цената, описанието, екстрите и статуса." />
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-        <section className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Основни данни</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Заглавие</label>
-              <input {...register('title')} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" />
-              {errors.title && <p className="text-red-500 text-sm mt-1">{errors.title.message}</p>}
-            </div>
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        <FormSection title="Основни данни">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <Field className="md:col-span-2" label="Заглавие" error={errors.title?.message}>
+              <Input invalid={!!errors.title} {...register('title')} />
+            </Field>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Марка</label>
-              <input value={listing.makeName} disabled className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-500" />
-            </div>
+            <Field label="Марка">
+              <Input value={listing.makeName} disabled />
+            </Field>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Модел</label>
-              <input value={listing.modelName} disabled className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-500" />
-            </div>
+            <Field label="Модел">
+              <Input value={listing.modelName} disabled />
+            </Field>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Цена</label>
-              <input type="number" {...register('price')} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
-              {errors.price && <p className="text-red-500 text-sm mt-1">{errors.price.message}</p>}
-            </div>
+            <Field label="Цена (€)" error={errors.price?.message}>
+              <Input type="number" invalid={!!errors.price} {...register('price')} />
+            </Field>
 
+            <Field label="Пробег (км)">
+              <Input type="number" {...register('mileage')} />
+            </Field>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Пробег (км)</label>
-              <input type="number" {...register('mileage')} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
-            </div>
+            <Field label="Град">
+              <Input {...register('city')} />
+            </Field>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Град</label>
-              <input {...register('city')} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Статус</label>
-              <select {...register('status')} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+            <Field label="Статус">
+              <Select {...register('status')}>
                 <option value="Active">{STATUS_LABELS.Active}</option>
                 <option value="Sold">{STATUS_LABELS.Sold}</option>
                 <option value="Draft">{STATUS_LABELS.Draft}</option>
-              </select>
-            </div>
+              </Select>
+            </Field>
 
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Описание</label>
-              <textarea {...register('description')} rows={4} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none" />
-            </div>
+            <Field className="md:col-span-2" label="Описание">
+              <Textarea rows={5} {...register('description')} />
+            </Field>
           </div>
-        </section>
+        </FormSection>
 
-        <section className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Текущи снимки</h2>
+        <FormSection title="Снимки" description="Премахни съществуващи или добави нови.">
           {listing.images && listing.images.length > 0 ? (
-            <div className="grid grid-cols-4 gap-3 mb-4">
+            <div className="mb-5 grid grid-cols-3 gap-3 sm:grid-cols-4">
               {listing.images.map((img) => (
-                <div key={img.id} className="relative group">
-                  <img src={img.url} alt="" className="w-full aspect-square object-cover rounded-lg" />
+                <div key={img.id} className="group relative">
+                  <img
+                    src={img.url}
+                    alt=""
+                    className="aspect-square w-full rounded-lg border border-border object-cover"
+                  />
                   <button
                     type="button"
                     onClick={() => handleDeleteImage(img.id)}
-                    className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="absolute right-1 top-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-fg/90 text-white opacity-0 transition-opacity group-hover:opacity-100"
                     aria-label="Изтрий снимката"
                   >
-                    X
+                    <X className="h-3.5 w-3.5" />
                   </button>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-sm text-gray-400 mb-4">Все още няма снимки.</p>
+            <p className="mb-4 text-sm text-fg-subtle">Все още няма снимки.</p>
           )}
 
-          <h3 className="text-sm font-medium text-gray-700 mb-2">Добави още снимки</h3>
           <div
             {...getRootProps()}
-            className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${isDragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'}`}
+            className={cn(
+              'flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-6 py-8 text-center cursor-pointer transition-colors',
+              isDragActive ? 'border-primary bg-primary-soft' : 'border-border hover:border-fg-subtle',
+            )}
           >
             <input {...getInputProps()} />
-            <p className="text-sm text-gray-600">
+            <Upload className="h-5 w-5 text-fg-muted" />
+            <p className="text-sm text-fg">
               {isDragActive ? 'Пусни снимките тук...' : 'Плъзни и пусни или щракни за избор'}
             </p>
           </div>
+
           {newFiles.length > 0 && (
-            <div className="grid grid-cols-4 gap-3 mt-3">
+            <div className="mt-4 grid grid-cols-3 gap-3 sm:grid-cols-4">
               {newFiles.map((file, i) => (
-                <div key={i} className="relative group">
-                  <img src={URL.createObjectURL(file)} alt="" className="w-full aspect-square object-cover rounded-lg" />
+                <div key={i} className="group relative">
+                  <img
+                    src={URL.createObjectURL(file)}
+                    alt=""
+                    className="aspect-square w-full rounded-lg border border-border object-cover"
+                  />
                   <button
                     type="button"
                     onClick={() => setNewFiles((prev) => prev.filter((_, idx) => idx !== i))}
-                    className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="absolute right-1 top-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-fg/90 text-white opacity-0 transition-opacity group-hover:opacity-100"
                     aria-label="Премахни снимката"
                   >
-                    X
+                    <X className="h-3.5 w-3.5" />
                   </button>
                 </div>
               ))}
             </div>
           )}
-        </section>
+        </FormSection>
 
         {Object.keys(featuresByCategory).length > 0 && (
-          <section className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Екстри</h2>
-            {Object.entries(featuresByCategory).map(([category, items]) => (
-              <div key={category} className="mb-4">
-                <h3 className="text-sm font-medium text-gray-500 mb-2">{category}</h3>
-                <div className="flex flex-wrap gap-2">
-                  {items.map((f) => (
-                    <button
-                      key={f.id}
-                      type="button"
-                      onClick={() => toggleFeature(f.id)}
-                      className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
-                        (selectedFeatures || []).includes(f.id)
-                          ? 'bg-blue-600 text-white border-blue-600'
-                          : 'bg-white text-gray-700 border-gray-300 hover:border-gray-400'
-                      }`}
-                    >
-                      {f.name}
-                    </button>
-                  ))}
+          <FormSection title="Екстри">
+            <div className="space-y-5">
+              {Object.entries(featuresByCategory).map(([category, items]) => (
+                <div key={category}>
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-fg-subtle">{category}</h3>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {items.map((f) => {
+                      const checked = (selectedFeatures || []).includes(f.id);
+                      return (
+                        <button
+                          key={f.id}
+                          type="button"
+                          onClick={() => toggleFeature(f.id)}
+                          className={cn(
+                            'rounded-full border px-3 py-1.5 text-xs font-medium transition-colors',
+                            checked
+                              ? 'bg-primary text-primary-fg border-primary'
+                              : 'bg-surface text-fg border-border hover:border-fg-subtle',
+                          )}
+                        >
+                          {f.name}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </section>
+              ))}
+            </div>
+          </FormSection>
         )}
 
-        <div className="flex gap-3">
-          <button
-            type="button"
-            onClick={() => navigate(`/listings/${id}`)}
-            className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-200 transition-colors"
-          >
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <Button type="button" variant="ghost" onClick={() => navigate(`/listings/${id}`)}>
             Отказ
-          </button>
-          <button
+          </Button>
+          <Button
             type="submit"
-            disabled={isSubmitting}
-            className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            variant="primary"
+            size="lg"
+            loading={isSubmitting}
+            leadingIcon={<Save className="h-4 w-4" />}
           >
             {isSubmitting ? 'Запазване...' : 'Запази промените'}
-          </button>
+          </Button>
         </div>
       </form>
-    </div>
+    </Container>
+  );
+}
+
+function FormSection({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="card-shell p-6">
+      <header className="mb-5">
+        <h2 className="text-base font-semibold text-fg">{title}</h2>
+        {description && <p className="mt-1 text-sm text-fg-muted">{description}</p>}
+      </header>
+      {children}
+    </section>
   );
 }
