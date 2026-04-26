@@ -434,7 +434,9 @@ function PriceHistoryCard({ history }: { history: { price: number; recordedAt: s
   const first = history[0].price;
   const last = history[history.length - 1].price;
   const diff = last - first;
-  const pct = Math.abs((diff / first) * 100).toFixed(1);
+  const pctValue = first > 0 ? (diff / first) * 100 : 0;
+  const isFlat = Math.abs(pctValue) < 0.1;
+  const pct = Math.abs(pctValue).toFixed(Math.abs(pctValue) < 1 ? 2 : 1);
 
   return (
     <section className="card-shell p-6">
@@ -443,24 +445,49 @@ function PriceHistoryCard({ history }: { history: { price: number; recordedAt: s
         <span
           className={cn(
             'text-xs font-medium',
-            diff < 0 ? 'text-success' : diff > 0 ? 'text-danger' : 'text-fg-muted',
+            isFlat ? 'text-fg-muted' : diff < 0 ? 'text-success' : 'text-danger',
           )}
         >
-          {diff < 0 ? `↓ ${pct}%` : diff > 0 ? `↑ ${pct}%` : '— без промяна'}
+          {isFlat ? '— без промяна' : diff < 0 ? `↓ ${pct}%` : `↑ ${pct}%`}
         </span>
       </div>
       <ResponsiveContainer width="100%" height={200}>
         <LineChart
-          data={history.map((p) => ({
-            date: new Date(p.recordedAt).toLocaleDateString('bg-BG', { month: 'short', day: 'numeric' }),
+          data={history.map((p, idx) => ({
+            idx,
+            recordedAt: p.recordedAt,
             price: p.price,
           }))}
         >
           <CartesianGrid strokeDasharray="3 3" stroke="#e6e8ee" />
-          <XAxis dataKey="date" tick={{ fontSize: 12, fill: '#64748b' }} stroke="#cbd5e1" />
+          <XAxis
+            dataKey="idx"
+            type="number"
+            domain={[0, history.length - 1]}
+            ticks={history.map((_, i) => i)}
+            tickFormatter={(i) =>
+              history[i]
+                ? new Date(history[i].recordedAt).toLocaleDateString('bg-BG', { month: 'short', day: 'numeric' })
+                : ''
+            }
+            tick={{ fontSize: 12, fill: '#64748b' }}
+            stroke="#cbd5e1"
+          />
           <YAxis tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 12, fill: '#64748b' }} stroke="#cbd5e1" />
-          <Tooltip formatter={(value) => [formatPrice(Number(value)), 'Цена']} />
-          <Line type="stepAfter" dataKey="price" stroke="#2563eb" strokeWidth={2} dot={{ fill: '#2563eb', r: 3 }} />
+          <Tooltip
+            labelFormatter={(i, payload) => {
+              const item = payload?.[0]?.payload as { recordedAt?: string } | undefined;
+              if (!item?.recordedAt) return '';
+              return new Date(item.recordedAt).toLocaleString('bg-BG', {
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+              });
+            }}
+            formatter={(value) => [formatPrice(Number(value)), 'Цена']}
+          />
+          <Line type="monotone" dataKey="price" stroke="#2563eb" strokeWidth={2} dot={{ fill: '#2563eb', r: 3 }} />
         </LineChart>
       </ResponsiveContainer>
       <p className="mt-3 text-xs text-fg-subtle">
