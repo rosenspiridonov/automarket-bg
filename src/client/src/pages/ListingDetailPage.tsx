@@ -37,7 +37,7 @@ import {
   CONDITION_LABELS,
 } from '../utils/constants';
 import type { FairPriceAnalysis } from '../types/listing';
-import { Badge, Button, Container, Skeleton, Textarea } from '../components/ui';
+import { Badge, Button, Container, Lightbox, Skeleton, Textarea } from '../components/ui';
 import { cn } from '../utils/cn';
 
 export function ListingDetailPage() {
@@ -45,6 +45,7 @@ export function ListingDetailPage() {
   const { isAuthenticated, user } = useAuthStore();
   const queryClient = useQueryClient();
   const [activeImage, setActiveImage] = useState(0);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
   const [contactMessage, setContactMessage] = useState('');
   const [showPhone, setShowPhone] = useState(false);
 
@@ -160,7 +161,21 @@ export function ListingDetailPage() {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:gap-8">
         <div className="space-y-6 lg:col-span-2">
-          <Gallery images={images} title={listing.title} active={activeImage} setActive={setActiveImage} />
+          <Gallery
+            images={images}
+            title={listing.title}
+            active={activeImage}
+            setActive={setActiveImage}
+            onImageClick={() => setLightboxOpen(true)}
+          />
+          {lightboxOpen && images.length > 0 && (
+            <Lightbox
+              images={images}
+              index={activeImage}
+              onClose={() => setLightboxOpen(false)}
+              onIndexChange={setActiveImage}
+            />
+          )}
 
           <section className="card-shell p-6">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -273,11 +288,13 @@ function Gallery({
   title,
   active,
   setActive,
+  onImageClick,
 }: {
   images: { id: number; url: string }[];
   title: string;
   active: number;
   setActive: (i: number) => void;
+  onImageClick: () => void;
 }) {
   if (images.length === 0) {
     return (
@@ -289,13 +306,18 @@ function Gallery({
 
   return (
     <div className="space-y-3">
-      <div className="overflow-hidden rounded-2xl bg-surface-soft border border-border">
+      <button
+        type="button"
+        onClick={onImageClick}
+        className="block w-full overflow-hidden rounded-2xl bg-surface-soft border border-border cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        aria-label="Отвори в пълен екран"
+      >
         <img
           src={images[active]?.url}
           alt={title}
           className="aspect-[16/9] w-full object-cover"
         />
-      </div>
+      </button>
       {images.length > 1 && (
         <div className="flex gap-2 overflow-x-auto pb-1">
           {images.map((img, i) => (

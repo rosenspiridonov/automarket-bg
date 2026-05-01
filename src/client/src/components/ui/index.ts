@@ -8,3 +8,4 @@ export { EmptyState } from './EmptyState';
 export { Skeleton, CarCardSkeleton } from './Skeleton';
 export { Container } from './Container';
 export { PageHeader } from './PageHeader';
+export { Lightbox } from './Lightbox';
