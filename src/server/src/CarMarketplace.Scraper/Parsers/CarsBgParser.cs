@@ -252,6 +252,20 @@ public class CarsBgParser : IListingParser
                 listing.Description += "\n\n" + extras;
         }
 
+        var sellerNameEl = document.QuerySelector(".seller-info__name, .offer-user__name, [class*='seller-name'], [class*='sellerName']");
+        if (sellerNameEl != null)
+        {
+            var name = sellerNameEl.TextContent.Trim();
+            if (!string.IsNullOrWhiteSpace(name)) listing.SellerName = name;
+        }
+
+        var sellerPhoneEl = document.QuerySelector(".seller-info__phone, .phone-number, [class*='seller-phone'], [data-phone]");
+        if (sellerPhoneEl != null)
+        {
+            var phone = sellerPhoneEl.GetAttribute("data-phone") ?? sellerPhoneEl.TextContent.Trim();
+            if (!string.IsNullOrWhiteSpace(phone)) listing.SellerPhone = phone;
+        }
+
         _logger.LogDebug("[cars.bg] Enriched: {Title}, {ImgCount} images, desc={HasDesc}",
             listing.Title, listing.ImageUrls.Count, listing.Description != null);
     }

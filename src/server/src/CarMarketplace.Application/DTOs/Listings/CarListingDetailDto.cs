@@ -9,6 +9,8 @@ public record CarListingDetailDto : CarListingDto
     public string? SellerEmail { get; init; }
     public string? SellerCity { get; init; }
     public DateTime? SellerMemberSince { get; init; }
+    public string? ExternalSourceUrl { get; init; }
+    public string? ExternalSource { get; init; }
     public FairPriceAnalysisDto? FairPriceAnalysis { get; init; }
 }
 

@@ -26,6 +26,8 @@ public class CarListingConfiguration : IEntityTypeConfiguration<CarListing>
         builder.Property(x => x.VinNumber).HasMaxLength(17);
         builder.Property(x => x.ExternalSourceId).HasMaxLength(100);
         builder.Property(x => x.ExternalSourceUrl).HasMaxLength(500);
+        builder.Property(x => x.ScrapedSellerName).HasMaxLength(200);
+        builder.Property(x => x.ScrapedSellerPhone).HasMaxLength(50);
 
         builder.Property(x => x.FuelType).HasConversion<string>().HasMaxLength(20);
         builder.Property(x => x.TransmissionType).HasConversion<string>().HasMaxLength(20);

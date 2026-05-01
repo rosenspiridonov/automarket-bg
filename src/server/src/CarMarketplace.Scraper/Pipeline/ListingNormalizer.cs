@@ -69,6 +69,8 @@ public class ListingNormalizer
             Region = scraped.Region,
             ExternalSourceId = scraped.ExternalId,
             ExternalSourceUrl = scraped.SourceUrl,
+            ScrapedSellerName = scraped.SellerName,
+            ScrapedSellerPhone = scraped.SellerPhone,
             SellerId = systemUserId,
             ExpiresAt = DateTime.UtcNow.AddDays(ListingConstants.ScrapedListingExpirationDays)
         };

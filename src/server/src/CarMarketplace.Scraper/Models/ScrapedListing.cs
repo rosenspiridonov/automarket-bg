@@ -30,4 +30,7 @@ public class ScrapedListing
     public string? Region { get; set; }
 
     public List<string> ImageUrls { get; set; } = [];
+
+    public string? SellerName { get; set; }
+    public string? SellerPhone { get; set; }
 }

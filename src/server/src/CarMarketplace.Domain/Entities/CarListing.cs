@@ -34,6 +34,8 @@ public class CarListing : AuditableEntity
 
     public string? ExternalSourceId { get; set; }
     public string? ExternalSourceUrl { get; set; }
+    public string? ScrapedSellerName { get; set; }
+    public string? ScrapedSellerPhone { get; set; }
 
     public DateTime? ExpiresAt { get; set; }
 

@@ -62,6 +62,8 @@ export interface CarListingDetailDto extends CarListingDto {
   sellerEmail: string | null;
   sellerCity: string | null;
   sellerMemberSince: string | null;
+  externalSourceUrl: string | null;
+  externalSource: string | null;
 }
 
 export interface SearchFilter {

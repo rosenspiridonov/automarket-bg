@@ -51,8 +51,12 @@ public class FavoriteService(AppDbContext context) : IFavoriteService
                     ?? f.CarListing.Images.Select(i => i.Url).FirstOrDefault(),
                 ImageCount = f.CarListing.Images.Count,
                 SellerId = f.CarListing.SellerId,
-                SellerName = f.CarListing.Seller.UserName ?? string.Empty,
-                SellerPhone = f.CarListing.Seller.PhoneNumber,
+                SellerName = f.CarListing.ExternalSourceUrl != null
+                    ? f.CarListing.ScrapedSellerName ?? string.Empty
+                    : f.CarListing.Seller.UserName ?? string.Empty,
+                SellerPhone = f.CarListing.ExternalSourceUrl != null
+                    ? f.CarListing.ScrapedSellerPhone
+                    : f.CarListing.Seller.PhoneNumber,
                 CreatedAt = f.CarListing.CreatedAt
             })
             .ToListAsync();

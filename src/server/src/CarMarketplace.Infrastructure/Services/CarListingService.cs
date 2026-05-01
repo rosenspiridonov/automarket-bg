@@ -164,11 +164,19 @@ public class CarListingService(
             PrimaryImageUrl = (listing.Images.FirstOrDefault(i => i.IsPrimary) ?? listing.Images.FirstOrDefault())?.Url,
             ImageCount = listing.Images.Count,
             SellerId = listing.SellerId,
-            SellerName = listing.Seller.UserName ?? string.Empty,
-            SellerPhone = listing.Seller.PhoneNumber,
-            SellerEmail = listing.Seller.Email,
-            SellerCity = listing.Seller.City,
-            SellerMemberSince = listing.Seller.CreatedAt,
+            SellerName = listing.ExternalSourceUrl != null
+                ? listing.ScrapedSellerName ?? string.Empty
+                : listing.Seller.UserName ?? string.Empty,
+            SellerPhone = listing.ExternalSourceUrl != null
+                ? listing.ScrapedSellerPhone
+                : listing.Seller.PhoneNumber,
+            SellerEmail = listing.ExternalSourceUrl != null ? null : listing.Seller.Email,
+            SellerCity = listing.ExternalSourceUrl != null ? null : listing.Seller.City,
+            SellerMemberSince = listing.ExternalSourceUrl != null ? null : listing.Seller.CreatedAt,
+            ExternalSourceUrl = listing.ExternalSourceUrl,
+            ExternalSource = listing.ExternalSourceUrl != null
+                ? new Uri(listing.ExternalSourceUrl).Host.Replace("www.", string.Empty)
+                : null,
             CreatedAt = listing.CreatedAt,
             Images = listing.Images.Select(i => new CarImageDto
             {
@@ -454,8 +462,10 @@ internal static class ListingProjections
             .FirstOrDefault(),
         ImageCount = l.Images.Count,
         SellerId = l.SellerId,
-        SellerName = l.Seller.UserName ?? string.Empty,
-        SellerPhone = l.Seller.PhoneNumber,
+        SellerName = l.ExternalSourceUrl != null
+            ? l.ScrapedSellerName ?? string.Empty
+            : l.Seller.UserName ?? string.Empty,
+        SellerPhone = l.ExternalSourceUrl != null ? l.ScrapedSellerPhone : l.Seller.PhoneNumber,
         CreatedAt = l.CreatedAt
     };
 }

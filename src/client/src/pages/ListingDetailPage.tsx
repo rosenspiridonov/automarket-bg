@@ -11,9 +11,11 @@ import {
   Car,
   CheckCircle2,
   Edit,
+  ExternalLink,
   Heart,
   Mail,
   MapPin,
+  MessageCircle,
   Minus,
   Phone,
   Send,
@@ -21,6 +23,7 @@ import {
   TrendingUp,
   User as UserIcon,
 } from 'lucide-react';
+import { normalizeBgPhone } from '../utils/phone';
 import { listingsApi } from '../api/listings';
 import { favoritesApi } from '../api/favorites';
 import { formatPrice, formatMileage, formatDate } from '../utils/format';
@@ -245,65 +248,18 @@ export function ListingDetailPage() {
 
         <aside className="space-y-4">
           <div className="card-shell p-6 lg:sticky lg:top-24">
-            <div className="flex items-center gap-3">
-              <div className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-primary-soft text-primary">
-                <UserIcon className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="font-semibold text-fg">{listing.sellerName}</p>
-                {listing.sellerCity && (
-                  <p className="text-xs text-fg-muted">{listing.sellerCity}</p>
-                )}
-              </div>
-            </div>
-            {listing.sellerMemberSince && (
-              <p className="mt-2 text-xs text-fg-subtle">
-                Член от {formatDate(listing.sellerMemberSince)}
-              </p>
-            )}
-
-            {listing.sellerPhone && (
-              showPhone ? (
-                <a
-                  href={`tel:${listing.sellerPhone}`}
-                  className="mt-5 inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-success px-4 text-sm font-medium text-white hover:opacity-90 transition-opacity"
-                >
-                  <Phone className="h-4 w-4" /> {listing.sellerPhone}
-                </a>
-              ) : (
-                <button
-                  onClick={() => setShowPhone(true)}
-                  className="mt-5 inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-success px-4 text-sm font-medium text-white hover:opacity-90 transition-opacity"
-                >
-                  <Phone className="h-4 w-4" /> Покажи телефон
-                </button>
-              )
-            )}
-
-            {listing.sellerEmail && !isOwner && (
-              <div className="mt-5 border-t border-border pt-5">
-                <h3 className="text-sm font-medium text-fg">Свържи се с продавача</h3>
-                <p className="mt-1 text-xs text-fg-muted inline-flex items-center gap-1">
-                  <Mail className="h-3 w-3" /> {listing.sellerEmail}
-                </p>
-                <Textarea
-                  value={contactMessage}
-                  onChange={(e) => setContactMessage(e.target.value)}
-                  rows={3}
-                  placeholder={`Здравейте, интересувам се от вашия ${listing.makeName} ${listing.modelName}...`}
-                  className="mt-3"
-                />
-                <Button
-                  variant="primary"
-                  fullWidth
-                  className="mt-2"
-                  leadingIcon={<Send className="h-4 w-4" />}
-                  onClick={handleSendMessage}
-                  disabled={!contactMessage.trim()}
-                >
-                  Изпрати съобщение
-                </Button>
-              </div>
+            {listing.externalSourceUrl ? (
+              <ExternalSellerCard listing={listing} showPhone={showPhone} onShowPhone={() => setShowPhone(true)} />
+            ) : (
+              <InternalSellerCard
+                listing={listing}
+                isOwner={isOwner}
+                showPhone={showPhone}
+                onShowPhone={() => setShowPhone(true)}
+                contactMessage={contactMessage}
+                onMessageChange={setContactMessage}
+                onSendMessage={handleSendMessage}
+              />
             )}
           </div>
         </aside>
@@ -494,5 +450,170 @@ function PriceHistoryCard({ history }: { history: { price: number; recordedAt: s
         {history.length} промени · текуща {formatPrice(last)} · първоначална {formatPrice(first)}
       </p>
     </section>
+  );
+}
+
+function ExternalSellerCard({
+  listing,
+  showPhone,
+  onShowPhone,
+}: {
+  listing: { externalSourceUrl: string | null; externalSource: string | null; sellerName: string; sellerPhone: string | null };
+  showPhone: boolean;
+  onShowPhone: () => void;
+}) {
+  const phone = listing.sellerPhone;
+  const normalizedPhone = phone ? normalizeBgPhone(phone) : null;
+  const e164Digits = normalizedPhone ? normalizedPhone.replace(/\D/g, '') : null;
+
+  return (
+    <>
+      {listing.externalSourceUrl && listing.externalSource && (
+        <a
+          href={listing.externalSourceUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mb-4 inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-xs text-fg-muted hover:border-fg-subtle hover:text-fg transition-colors"
+        >
+          <ExternalLink className="h-3 w-3" />
+          Източник: {listing.externalSource}
+        </a>
+      )}
+
+      <div className="flex items-center gap-3">
+        <div className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-primary-soft text-primary">
+          <UserIcon className="h-5 w-5" />
+        </div>
+        <div>
+          <p className="font-semibold text-fg">
+            {listing.sellerName || 'Продавач не е посочен'}
+          </p>
+        </div>
+      </div>
+
+      {phone && (
+        <div className="mt-5 space-y-2">
+          {showPhone ? (
+            <a
+              href={`tel:${phone}`}
+              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-success px-4 text-sm font-medium text-white hover:opacity-90 transition-opacity"
+            >
+              <Phone className="h-4 w-4" /> {phone}
+            </a>
+          ) : (
+            <button
+              onClick={onShowPhone}
+              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-success px-4 text-sm font-medium text-white hover:opacity-90 transition-opacity"
+            >
+              <Phone className="h-4 w-4" /> Покажи телефон
+            </button>
+          )}
+
+          {showPhone && e164Digits && (
+            <>
+              <a
+                href={`viber://chat?number=%2B${e164Digits}`}
+                className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-border px-4 text-sm font-medium text-fg hover:bg-surface-soft transition-colors"
+              >
+                <MessageCircle className="h-4 w-4 text-[#7360f2]" />
+                Пиши във Viber
+              </a>
+              <a
+                href={`https://wa.me/${e164Digits}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-border px-4 text-sm font-medium text-fg hover:bg-surface-soft transition-colors"
+              >
+                <MessageCircle className="h-4 w-4 text-[#25d366]" />
+                Пиши във WhatsApp
+              </a>
+            </>
+          )}
+        </div>
+      )}
+    </>
+  );
+}
+
+function InternalSellerCard({
+  listing,
+  isOwner,
+  showPhone,
+  onShowPhone,
+  contactMessage,
+  onMessageChange,
+  onSendMessage,
+}: {
+  listing: { sellerName: string; sellerCity: string | null; sellerMemberSince: string | null; sellerPhone: string | null; sellerEmail: string | null; makeName: string; modelName: string };
+  isOwner: boolean;
+  showPhone: boolean;
+  onShowPhone: () => void;
+  contactMessage: string;
+  onMessageChange: (v: string) => void;
+  onSendMessage: () => void;
+}) {
+  return (
+    <>
+      <div className="flex items-center gap-3">
+        <div className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-primary-soft text-primary">
+          <UserIcon className="h-5 w-5" />
+        </div>
+        <div>
+          <p className="font-semibold text-fg">{listing.sellerName}</p>
+          {listing.sellerCity && (
+            <p className="text-xs text-fg-muted">{listing.sellerCity}</p>
+          )}
+        </div>
+      </div>
+      {listing.sellerMemberSince && (
+        <p className="mt-2 text-xs text-fg-subtle">
+          Член от {formatDate(listing.sellerMemberSince)}
+        </p>
+      )}
+
+      {listing.sellerPhone && (
+        showPhone ? (
+          <a
+            href={`tel:${listing.sellerPhone}`}
+            className="mt-5 inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-success px-4 text-sm font-medium text-white hover:opacity-90 transition-opacity"
+          >
+            <Phone className="h-4 w-4" /> {listing.sellerPhone}
+          </a>
+        ) : (
+          <button
+            onClick={onShowPhone}
+            className="mt-5 inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-success px-4 text-sm font-medium text-white hover:opacity-90 transition-opacity"
+          >
+            <Phone className="h-4 w-4" /> Покажи телефон
+          </button>
+        )
+      )}
+
+      {listing.sellerEmail && !isOwner && (
+        <div className="mt-5 border-t border-border pt-5">
+          <h3 className="text-sm font-medium text-fg">Свържи се с продавача</h3>
+          <p className="mt-1 text-xs text-fg-muted inline-flex items-center gap-1">
+            <Mail className="h-3 w-3" /> {listing.sellerEmail}
+          </p>
+          <Textarea
+            value={contactMessage}
+            onChange={(e) => onMessageChange(e.target.value)}
+            rows={3}
+            placeholder={`Здравейте, интересувам се от вашия ${listing.makeName} ${listing.modelName}...`}
+            className="mt-3"
+          />
+          <Button
+            variant="primary"
+            fullWidth
+            className="mt-2"
+            leadingIcon={<Send className="h-4 w-4" />}
+            onClick={onSendMessage}
+            disabled={!contactMessage.trim()}
+          >
+            Изпрати съобщение
+          </Button>
+        </div>
+      )}
+    </>
   );
 }
