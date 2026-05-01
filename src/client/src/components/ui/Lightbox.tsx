@@ -1,6 +1,6 @@
-import { useEffect, useCallback } from 'react';
-import { createPortal } from 'react-dom';
-import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
+import { ChevronLeft, ChevronRight, X } from "lucide-react";
 
 interface LightboxProps {
   images: { id: number; url: string }[];
@@ -9,27 +9,38 @@ interface LightboxProps {
   onIndexChange: (i: number) => void;
 }
 
-export function Lightbox({ images, index, onClose, onIndexChange }: LightboxProps) {
+export function Lightbox({
+  images,
+  index,
+  onClose,
+  onIndexChange,
+}: LightboxProps) {
   const canPrev = index > 0;
   const canNext = index < images.length - 1;
 
-  const prev = useCallback(() => { if (canPrev) onIndexChange(index - 1); }, [canPrev, index, onIndexChange]);
-  const next = useCallback(() => { if (canNext) onIndexChange(index + 1); }, [canNext, index, onIndexChange]);
+  const prev = useCallback(() => {
+    if (canPrev) onIndexChange(index - 1);
+  }, [canPrev, index, onIndexChange]);
+  const next = useCallback(() => {
+    if (canNext) onIndexChange(index + 1);
+  }, [canNext, index, onIndexChange]);
 
   useEffect(() => {
     const original = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = original; };
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = original;
+    };
   }, []);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-      if (e.key === 'ArrowLeft') prev();
-      if (e.key === 'ArrowRight') next();
+      if (e.key === "Escape") onClose();
+      if (e.key === "ArrowLeft") prev();
+      if (e.key === "ArrowRight") next();
     };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
   }, [onClose, prev, next]);
 
   return createPortal(
@@ -43,7 +54,10 @@ export function Lightbox({ images, index, onClose, onIndexChange }: LightboxProp
           {index + 1} / {images.length}
         </span>
         <button
-          onClick={(e) => { e.stopPropagation(); onClose(); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onClose();
+          }}
           className="pointer-events-auto inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors"
           aria-label="Затвори"
         >
@@ -51,7 +65,7 @@ export function Lightbox({ images, index, onClose, onIndexChange }: LightboxProp
         </button>
       </div>
 
-      {/* Main image — click does not close */}
+      {/* Main image - click does not close */}
       <img
         src={images[index]?.url}
         alt=""
@@ -63,7 +77,10 @@ export function Lightbox({ images, index, onClose, onIndexChange }: LightboxProp
       {/* Prev */}
       {canPrev && (
         <button
-          onClick={(e) => { e.stopPropagation(); prev(); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            prev();
+          }}
           className="absolute left-3 top-1/2 -translate-y-1/2 inline-flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors"
           aria-label="Предишна"
         >
@@ -74,7 +91,10 @@ export function Lightbox({ images, index, onClose, onIndexChange }: LightboxProp
       {/* Next */}
       {canNext && (
         <button
-          onClick={(e) => { e.stopPropagation(); next(); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            next();
+          }}
           className="absolute right-3 top-1/2 -translate-y-1/2 inline-flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors"
           aria-label="Следваща"
         >

@@ -110,21 +110,31 @@ public class ListingNormalizer
 
             if (_modelsByMake.TryGetValue(name, out var models))
             {
+                // 1. Exact match on scraped model name
                 if (!string.IsNullOrEmpty(modelName) &&
                     models.TryGetValue(modelName, out var exactModel))
-                {
                     return (make, exactModel);
-                }
 
-                foreach (var (mName, model) in models)
+                // 2. Title contains the full DB model name — prefer longer names so "C 200" wins over "200"
+                foreach (var (mName, model) in models.OrderByDescending(m => m.Key.Length))
                 {
                     if (title.Contains(mName, StringComparison.OrdinalIgnoreCase))
                         return (make, model);
                 }
 
-                var firstModel = models.Values.FirstOrDefault();
-                if (firstModel != null)
-                    return (make, firstModel);
+                // 3. Scraped model name starts with the first token of a DB model name
+                //    e.g. "320i" starts with "3" → "3 Series"; "X5 xDrive" starts with "X5"
+                //    Order by first-token length descending so longer tokens win ("30" before "3")
+                if (!string.IsNullOrEmpty(modelName))
+                {
+                    foreach (var (mName, model) in models.OrderByDescending(m => m.Key.Split(' ')[0].Length))
+                    {
+                        var firstToken = mName.Split(' ')[0];
+                        if (firstToken.Length > 0 &&
+                            modelName.StartsWith(firstToken, StringComparison.OrdinalIgnoreCase))
+                            return (make, model);
+                    }
+                }
             }
 
             break;

@@ -1,31 +1,37 @@
-import { Link, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
-import { ArrowRight, BarChart3, Heart, Search, ShieldCheck } from 'lucide-react';
-import { listingsApi } from '../api/listings';
-import { makesApi } from '../api/makes';
-import { CarCard } from '../components/car/CarCard';
-import { Container, Select, CarCardSkeleton } from '../components/ui';
+import { Link, useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import {
+  ArrowRight,
+  BarChart3,
+  Heart,
+  Search,
+  ShieldCheck,
+} from "lucide-react";
+import { listingsApi } from "../api/listings";
+import { makesApi } from "../api/makes";
+import { CarCard } from "../components/car/CarCard";
+import { Container, Select, CarCardSkeleton } from "../components/ui";
 
 export function HomePage() {
   const navigate = useNavigate();
-  const [selectedMakeId, setSelectedMakeId] = useState('');
-  const [keyword, setKeyword] = useState('');
+  const [selectedMakeId, setSelectedMakeId] = useState("");
+  const [keyword, setKeyword] = useState("");
 
   const { data: makes = [] } = useQuery({
-    queryKey: ['makes'],
+    queryKey: ["makes"],
     queryFn: makesApi.getAll,
   });
 
   const { data: featured = [], isLoading: featuredLoading } = useQuery({
-    queryKey: ['listings', 'featured'],
+    queryKey: ["listings", "featured"],
     queryFn: () => listingsApi.featured(8),
   });
 
   const handleQuickSearch = () => {
     const params = new URLSearchParams();
-    if (selectedMakeId) params.set('makeId', selectedMakeId);
-    if (keyword.trim()) params.set('query', keyword.trim());
+    if (selectedMakeId) params.set("makeId", selectedMakeId);
+    if (keyword.trim()) params.set("query", keyword.trim());
     navigate(`/search?${params.toString()}`);
   };
 
@@ -46,7 +52,8 @@ export function HomePage() {
               Намери своята <span className="text-primary">перфектна кола</span>
             </h1>
             <p className="mt-4 text-base text-fg-muted sm:text-lg">
-              Чисто и просто търсене през хиляди обяви от доверени продавачи в България.
+              Чисто и просто търсене през хиляди обяви от доверени продавачи в
+              България.
             </p>
           </div>
 
@@ -58,7 +65,7 @@ export function HomePage() {
                   type="text"
                   value={keyword}
                   onChange={(e) => setKeyword(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleQuickSearch()}
+                  onKeyDown={(e) => e.key === "Enter" && handleQuickSearch()}
                   placeholder="Ключови думи, напр. BMW 320d..."
                   className="h-11 w-full rounded-lg bg-transparent pl-9 pr-3 text-sm placeholder:text-fg-subtle focus:focus-ring"
                 />
@@ -70,7 +77,9 @@ export function HomePage() {
               >
                 <option value="">Всички марки</option>
                 {makes.map((m) => (
-                  <option key={m.id} value={m.id}>{m.name}</option>
+                  <option key={m.id} value={m.id}>
+                    {m.name}
+                  </option>
                 ))}
               </Select>
               <button
@@ -102,8 +111,12 @@ export function HomePage() {
       <Container className="py-14">
         <div className="mb-6 flex items-end justify-between">
           <div>
-            <h2 className="text-xl font-semibold tracking-tight text-fg sm:text-2xl">Последни обяви</h2>
-            <p className="mt-1 text-sm text-fg-muted">Прясно публикувани коли — обновяваме всеки ден.</p>
+            <h2 className="text-xl font-semibold tracking-tight text-fg sm:text-2xl">
+              Последни обяви
+            </h2>
+            <p className="mt-1 text-sm text-fg-muted">
+              Прясно публикувани коли - обновяваме всеки ден.
+            </p>
           </div>
           <Link
             to="/search"
@@ -115,14 +128,22 @@ export function HomePage() {
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {featuredLoading
-            ? Array.from({ length: 8 }).map((_, i) => <CarCardSkeleton key={i} />)
-            : featured.map((listing) => <CarCard key={listing.id} listing={listing} />)}
+            ? Array.from({ length: 8 }).map((_, i) => (
+                <CarCardSkeleton key={i} />
+              ))
+            : featured.map((listing) => (
+                <CarCard key={listing.id} listing={listing} />
+              ))}
         </div>
       </Container>
 
       <Container className="pb-16">
-        <h2 className="text-xl font-semibold tracking-tight text-fg sm:text-2xl">Защо AutoMarket BG?</h2>
-        <p className="mt-1 text-sm text-fg-muted">Изграден за удобство на купувачи и продавачи.</p>
+        <h2 className="text-xl font-semibold tracking-tight text-fg sm:text-2xl">
+          Защо AutoMarket BG?
+        </h2>
+        <p className="mt-1 text-sm text-fg-muted">
+          Изграден за удобство на купувачи и продавачи.
+        </p>
 
         <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
           <Feature
@@ -145,9 +166,12 @@ export function HomePage() {
         <div className="mt-10 rounded-2xl border border-border bg-fg p-8 text-white sm:p-10">
           <div className="flex flex-col items-start gap-6 sm:flex-row sm:items-center sm:justify-between">
             <div className="max-w-xl">
-              <h3 className="text-xl font-semibold sm:text-2xl">Готов за следващата си кола?</h3>
+              <h3 className="text-xl font-semibold sm:text-2xl">
+                Готов за следващата си кола?
+              </h3>
               <p className="mt-2 text-sm text-white/70">
-                Регистрирай се безплатно, запази търсения и първи научавай за нови обяви.
+                Регистрирай се безплатно, запази търсения и първи научавай за
+                нови обяви.
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -171,7 +195,15 @@ export function HomePage() {
   );
 }
 
-function Feature({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) {
+function Feature({
+  icon,
+  title,
+  description,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+}) {
   return (
     <div className="card-shell p-6">
       <div className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-primary-soft text-primary">

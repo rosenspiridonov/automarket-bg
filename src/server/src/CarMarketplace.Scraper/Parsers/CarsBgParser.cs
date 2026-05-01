@@ -252,18 +252,27 @@ public class CarsBgParser : IListingParser
                 listing.Description += "\n\n" + extras;
         }
 
-        var sellerNameEl = document.QuerySelector(".seller-info__name, .offer-user__name, [class*='seller-name'], [class*='sellerName']");
+        var sellerNameEl = document.QuerySelector(".content:last-child table tr:first-child td:first-child a b");
         if (sellerNameEl != null)
         {
             var name = sellerNameEl.TextContent.Trim();
             if (!string.IsNullOrWhiteSpace(name)) listing.SellerName = name;
         }
 
-        var sellerPhoneEl = document.QuerySelector(".seller-info__phone, .phone-number, [class*='seller-phone'], [data-phone]");
-        if (sellerPhoneEl != null)
+        var phoneLink = document.QuerySelector("a[href^='tel:']");
+        if (phoneLink != null)
         {
-            var phone = sellerPhoneEl.GetAttribute("data-phone") ?? sellerPhoneEl.TextContent.Trim();
+            var href = phoneLink.GetAttribute("href") ?? "";
+            var phone = href.StartsWith("tel:") ? href["tel:".Length..] : phoneLink.TextContent.Trim();
             if (!string.IsNullOrWhiteSpace(phone)) listing.SellerPhone = phone;
+        }
+
+        var sellerLocationEl = document.QuerySelector(".icon-location");
+        if (sellerLocationEl != null)
+        {
+            var loc = sellerLocationEl.TextContent.Trim();
+            if (!string.IsNullOrWhiteSpace(loc) && string.IsNullOrWhiteSpace(listing.City))
+                listing.City = loc;
         }
 
         _logger.LogDebug("[cars.bg] Enriched: {Title}, {ImgCount} images, desc={HasDesc}",

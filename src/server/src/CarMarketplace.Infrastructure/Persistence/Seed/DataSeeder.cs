@@ -38,6 +38,31 @@ public static class DataSeeder
         await context.SaveChangesAsync();
     }
 
+    public static async Task SeedMissingModelsAsync(AppDbContext context, ISeedDataProvider seedData)
+    {
+        var dbMakes = await context.Makes.Include(m => m.Models).ToListAsync();
+        var makesByName = dbMakes.ToDictionary(m => m.Name, StringComparer.OrdinalIgnoreCase);
+
+        bool hasChanges = false;
+        foreach (var dto in seedData.GetMakes())
+        {
+            if (!makesByName.TryGetValue(dto.Name, out var make)) continue;
+
+            var existing = make.Models.Select(m => m.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            foreach (var modelName in dto.Models)
+            {
+                if (!existing.Contains(modelName))
+                {
+                    make.Models.Add(new Model { Name = modelName, MakeId = make.Id });
+                    hasChanges = true;
+                }
+            }
+        }
+
+        if (hasChanges)
+            await context.SaveChangesAsync();
+    }
+
     public static async Task SeedRolesAndAdminAsync(
         RoleManager<IdentityRole> roleManager,
         UserManager<ApplicationUser> userManager)
