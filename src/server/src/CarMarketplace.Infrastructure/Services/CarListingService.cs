@@ -69,7 +69,22 @@ public class CarListingService(
             query = query.Where(l => l.Condition == condition);
 
         if (!string.IsNullOrEmpty(filter.City))
-            query = query.Where(l => l.City != null && l.City.Contains(filter.City));
+            query = query.Where(l => l.City != null && EF.Functions.ILike(l.City, $"%{filter.City}%"));
+
+        if (!string.IsNullOrEmpty(filter.Region))
+            query = query.Where(l => l.Region != null && EF.Functions.ILike(l.Region, $"%{filter.Region}%"));
+
+        if (filter.HorsePowerFrom.HasValue)
+            query = query.Where(l => l.HorsePower >= filter.HorsePowerFrom);
+
+        if (filter.HorsePowerTo.HasValue)
+            query = query.Where(l => l.HorsePower <= filter.HorsePowerTo);
+
+        if (filter.FeatureIds is { Count: > 0 })
+        {
+            foreach (var fid in filter.FeatureIds)
+                query = query.Where(l => l.Features.Any(f => f.Id == fid));
+        }
 
         if (!string.IsNullOrEmpty(filter.Query))
         {

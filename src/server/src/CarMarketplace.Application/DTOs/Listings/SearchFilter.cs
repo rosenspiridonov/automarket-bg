@@ -17,6 +17,10 @@ public class SearchFilter
     public string? Color { get; set; }
     public string? Condition { get; set; }
     public string? City { get; set; }
+    public string? Region { get; set; }
+    public int? HorsePowerFrom { get; set; }
+    public int? HorsePowerTo { get; set; }
+    public List<int>? FeatureIds { get; set; }
     public string? Query { get; set; }
     public ListingSortOrder SortBy { get; set; } = ListingSortOrder.Newest;
     public int Page { get; set; } = 1;

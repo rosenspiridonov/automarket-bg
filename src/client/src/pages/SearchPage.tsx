@@ -2,9 +2,10 @@ import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
-import { Bookmark, ChevronLeft, ChevronRight, Filter, Search as SearchIcon, X } from 'lucide-react';
+import { Bookmark, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Filter, Search as SearchIcon, X } from 'lucide-react';
 import { listingsApi } from '../api/listings';
 import { makesApi } from '../api/makes';
+import { featuresApi } from '../api/features';
 import { favoritesApi } from '../api/favorites';
 import { savedSearchesApi } from '../api/savedSearches';
 import type { ModelDto } from '../api/makes';
@@ -22,10 +23,11 @@ import {
   Select,
 } from '../components/ui';
 import {
-  FUEL_TYPES, TRANSMISSION_TYPES, BODY_TYPES,
-  FUEL_TYPE_LABELS, TRANSMISSION_LABELS, BODY_TYPE_LABELS,
+  FUEL_TYPES, TRANSMISSION_TYPES, BODY_TYPES, DRIVE_TYPES, CONDITIONS, COLORS,
+  FUEL_TYPE_LABELS, TRANSMISSION_LABELS, BODY_TYPE_LABELS, DRIVE_TYPE_LABELS, CONDITION_LABELS, COLOR_LABELS,
   SORT_OPTIONS,
 } from '../utils/constants';
+import { cn } from '../utils/cn';
 
 export function SearchPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -36,6 +38,7 @@ export function SearchPage() {
   const { isAuthenticated } = useAuthStore();
   const queryClient = useQueryClient();
 
+  const featureIdsParam = searchParams.getAll('featureIds').map(Number).filter(Boolean);
   const filter: SearchFilter = {
     makeId: searchParams.get('makeId') ? Number(searchParams.get('makeId')) : undefined,
     modelId: searchParams.get('modelId') ? Number(searchParams.get('modelId')) : undefined,
@@ -46,6 +49,14 @@ export function SearchPage() {
     fuelType: searchParams.get('fuelType') || undefined,
     transmissionType: searchParams.get('transmissionType') || undefined,
     bodyType: searchParams.get('bodyType') || undefined,
+    driveType: searchParams.get('driveType') || undefined,
+    color: searchParams.get('color') || undefined,
+    condition: searchParams.get('condition') || undefined,
+    city: searchParams.get('city') || undefined,
+    region: searchParams.get('region') || undefined,
+    horsePowerFrom: searchParams.get('horsePowerFrom') ? Number(searchParams.get('horsePowerFrom')) : undefined,
+    horsePowerTo: searchParams.get('horsePowerTo') ? Number(searchParams.get('horsePowerTo')) : undefined,
+    featureIds: featureIdsParam.length > 0 ? featureIdsParam : undefined,
     query: searchParams.get('query') || undefined,
     sortBy: searchParams.get('sortBy') || 'newest',
     page: searchParams.get('page') ? Number(searchParams.get('page')) : 1,
@@ -93,8 +104,14 @@ export function SearchPage() {
   const updateFilter = (updates: Partial<SearchFilter>) => {
     const next = new URLSearchParams(searchParams);
     Object.entries(updates).forEach(([key, val]) => {
-      if (val === undefined || val === '' || val === null) next.delete(key);
-      else next.set(key, String(val));
+      if (val === undefined || val === '' || val === null) {
+        next.delete(key);
+      } else if (Array.isArray(val)) {
+        next.delete(key);
+        val.forEach((item) => next.append(key, String(item)));
+      } else {
+        next.set(key, String(val));
+      }
     });
     if ('makeId' in updates) next.delete('modelId');
     next.set('page', '1');
@@ -298,6 +315,10 @@ export function SearchPage() {
   );
 }
 
+const EXPANDED_FILTER_KEYS: (keyof SearchFilter)[] = [
+  'driveType', 'color', 'condition', 'city', 'region', 'horsePowerFrom', 'horsePowerTo', 'featureIds',
+];
+
 interface FiltersPanelProps {
   filter: SearchFilter;
   makes: { id: number; name: string }[];
@@ -317,6 +338,43 @@ function FiltersPanel({
   onClear,
   activeFilterCount,
 }: FiltersPanelProps) {
+  const [expanded, setExpanded] = useState(false);
+
+  const { data: features = [] } = useQuery({
+    queryKey: ['features'],
+    queryFn: featuresApi.getAll,
+    enabled: expanded,
+  });
+
+  const featuresByCategory = features.reduce(
+    (acc, f) => {
+      if (!acc[f.category]) acc[f.category] = [];
+      acc[f.category].push(f);
+      return acc;
+    },
+    {} as Record<string, typeof features>,
+  );
+
+  const selectedFeatureIds = filter.featureIds ?? [];
+
+  const toggleFeature = (id: number) => {
+    const next = selectedFeatureIds.includes(id)
+      ? selectedFeatureIds.filter((f) => f !== id)
+      : [...selectedFeatureIds, id];
+    onUpdate({ featureIds: next.length > 0 ? next : undefined });
+  };
+
+  const expandedActiveCount = EXPANDED_FILTER_KEYS.filter((k) => {
+    const v = filter[k];
+    return Array.isArray(v) ? v.length > 0 : v !== undefined;
+  }).length;
+
+  const clearExpanded = () => {
+    const reset: Partial<SearchFilter> = {};
+    EXPANDED_FILTER_KEYS.forEach((k) => { (reset as Record<string, undefined>)[k] = undefined; });
+    onUpdate(reset);
+  };
+
   return (
     <div className="card-shell p-5 space-y-5">
       <div className="flex items-center justify-between">
@@ -439,6 +497,138 @@ function FiltersPanel({
           {BODY_TYPES.map((t) => <option key={t} value={t}>{BODY_TYPE_LABELS[t] ?? t}</option>)}
         </Select>
       </Field>
+
+      {/* Expanded filters toggle */}
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        className="flex w-full items-center justify-between rounded-lg border border-border px-3 py-2 text-sm font-medium text-fg hover:bg-surface-soft transition-colors"
+      >
+        <span>
+          Още филтри
+          {expandedActiveCount > 0 && (
+            <span className="ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-fg">
+              {expandedActiveCount}
+            </span>
+          )}
+        </span>
+        {expanded ? <ChevronUp className="h-4 w-4 text-fg-muted" /> : <ChevronDown className="h-4 w-4 text-fg-muted" />}
+      </button>
+
+      {expanded && (
+        <div className="space-y-5 border-t border-border pt-5">
+          <div className="grid grid-cols-2 gap-2">
+            <Field label="Мощност от (к.с.)">
+              <Input
+                type="number"
+                placeholder="Мин."
+                defaultValue={filter.horsePowerFrom || ''}
+                onBlur={(e) =>
+                  onUpdate({ horsePowerFrom: e.target.value ? Number(e.target.value) : undefined })
+                }
+              />
+            </Field>
+            <Field label="Мощност до (к.с.)">
+              <Input
+                type="number"
+                placeholder="Макс."
+                defaultValue={filter.horsePowerTo || ''}
+                onBlur={(e) =>
+                  onUpdate({ horsePowerTo: e.target.value ? Number(e.target.value) : undefined })
+                }
+              />
+            </Field>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <Field label="Град">
+              <Input
+                defaultValue={filter.city || ''}
+                placeholder="напр. София"
+                onBlur={(e) => onUpdate({ city: e.target.value || undefined })}
+              />
+            </Field>
+            <Field label="Регион">
+              <Input
+                defaultValue={filter.region || ''}
+                placeholder="напр. Пловдив"
+                onBlur={(e) => onUpdate({ region: e.target.value || undefined })}
+              />
+            </Field>
+          </div>
+
+          <Field label="Задвижване">
+            <Select
+              value={filter.driveType || ''}
+              onChange={(e) => onUpdate({ driveType: e.target.value || undefined })}
+            >
+              <option value="">Всички</option>
+              {DRIVE_TYPES.map((t) => <option key={t} value={t}>{DRIVE_TYPE_LABELS[t] ?? t}</option>)}
+            </Select>
+          </Field>
+
+          <Field label="Цвят">
+            <Select
+              value={filter.color || ''}
+              onChange={(e) => onUpdate({ color: e.target.value || undefined })}
+            >
+              <option value="">Всички</option>
+              {COLORS.map((t) => <option key={t} value={t}>{COLOR_LABELS[t] ?? t}</option>)}
+            </Select>
+          </Field>
+
+          <Field label="Състояние">
+            <Select
+              value={filter.condition || ''}
+              onChange={(e) => onUpdate({ condition: e.target.value || undefined })}
+            >
+              <option value="">Всички</option>
+              {CONDITIONS.map((t) => <option key={t} value={t}>{CONDITION_LABELS[t] ?? t}</option>)}
+            </Select>
+          </Field>
+
+          {Object.keys(featuresByCategory).length > 0 && (
+            <div className="space-y-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-fg-subtle">Екстри</p>
+              {Object.entries(featuresByCategory).map(([category, items]) => (
+                <div key={category}>
+                  <p className="mb-1.5 text-xs text-fg-muted">{category}</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {items.map((f) => {
+                      const active = selectedFeatureIds.includes(f.id);
+                      return (
+                        <button
+                          key={f.id}
+                          type="button"
+                          onClick={() => toggleFeature(f.id)}
+                          className={cn(
+                            'rounded-full border px-2.5 py-1 text-xs font-medium transition-colors',
+                            active
+                              ? 'border-primary bg-primary text-primary-fg'
+                              : 'border-border bg-surface text-fg hover:border-fg-subtle',
+                          )}
+                        >
+                          {f.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {expandedActiveCount > 0 && (
+            <button
+              type="button"
+              onClick={clearExpanded}
+              className="text-xs font-medium text-primary hover:underline"
+            >
+              Изчисти допълнителните филтри
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

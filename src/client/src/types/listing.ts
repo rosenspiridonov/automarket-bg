@@ -76,6 +76,14 @@ export interface SearchFilter {
   fuelType?: string;
   transmissionType?: string;
   bodyType?: string;
+  driveType?: string;
+  color?: string;
+  condition?: string;
+  city?: string;
+  region?: string;
+  horsePowerFrom?: number;
+  horsePowerTo?: number;
+  featureIds?: number[];
   query?: string;
   sortBy?: string;
   page?: number;
