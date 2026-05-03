@@ -41,7 +41,9 @@ public class ScrapingPipeline
 
         var systemUser = await EnsureSystemUserAsync();
         var makes = await _context.Makes.Include(m => m.Models).ToListAsync(ct);
+        var features = await _context.CarFeatures.ToListAsync(ct);
         _normalizer.LoadMakesAndModels(makes);
+        _normalizer.LoadFeatures(features);
 
         var existingExternalIds = await _context.CarListings
             .Where(l => l.ExternalSourceId != null)

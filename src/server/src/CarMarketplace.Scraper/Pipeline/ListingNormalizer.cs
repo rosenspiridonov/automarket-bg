@@ -11,6 +11,35 @@ public class ListingNormalizer
     private readonly ILogger<ListingNormalizer> _logger;
     private Dictionary<string, Make> _makesByName = new(StringComparer.OrdinalIgnoreCase);
     private Dictionary<string, Dictionary<string, Model>> _modelsByMake = new(StringComparer.OrdinalIgnoreCase);
+    private List<CarFeature> _features = [];
+
+    // Maps abbreviations/variants used on scraper sources to canonical DB feature names
+    private static readonly Dictionary<string, string> FeatureAliases = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["Ел.стъкла"] = "Електрически стъкла",
+        ["Ел. стъкла"] = "Електрически стъкла",
+        ["Ел.огледала"] = "Електрически огледала",
+        ["Ел. огледала"] = "Електрически огледала",
+        ["Центр. заключване"] = "Централно заключване",
+        ["Централно заключ"] = "Централно заключване",
+        ["Сервизна книжка"] = "Сервизна история",
+        ["Стерео уредба"] = "Премиум аудио",
+        ["Навигационна система"] = "Навигация",
+        ["Навигация/Мултимедия"] = "Навигация",
+        ["HUD"] = "Head-up дисплей",
+        ["Head-Up Display"] = "Head-up дисплей",
+        ["Keyless"] = "Keyless вход",
+        ["Безключов достъп"] = "Keyless вход",
+        ["Ксенон"] = "Ксенонови фарове",
+        ["Ксенонови"] = "Ксенонови фарове",
+        ["LED фарове"] = "LED фарове",
+        ["CarPlay"] = "Apple CarPlay",
+        ["Apple Carplay"] = "Apple CarPlay",
+        ["Лизинг"] = "Лизинг",
+        ["Гаранция"] = "Гаранция",
+        ["Старт/стоп"] = "Старт-стоп система",
+        ["Start/Stop"] = "Старт-стоп система",
+    };
 
     public ListingNormalizer(ILogger<ListingNormalizer> logger)
     {
@@ -28,6 +57,55 @@ public class ListingNormalizer
         }
 
         _logger.LogInformation("Loaded {MakeCount} makes with models for normalization", makes.Count);
+    }
+
+    public void LoadFeatures(List<CarFeature> features)
+    {
+        _features = features;
+        _logger.LogInformation("Loaded {FeatureCount} features for normalization", features.Count);
+    }
+
+    private IEnumerable<CarFeature> MapFeatures(List<string> extracted)
+    {
+        var result = new HashSet<CarFeature>();
+
+        foreach (var raw in extracted)
+        {
+            var candidate = raw.Trim();
+            if (candidate.Length < 2) continue;
+
+            // Resolve alias first
+            if (FeatureAliases.TryGetValue(candidate, out var aliased))
+                candidate = aliased;
+
+            // 1. Exact match (case-insensitive)
+            var exact = _features.FirstOrDefault(f =>
+                f.Name.Equals(candidate, StringComparison.OrdinalIgnoreCase));
+            if (exact != null) { result.Add(exact); continue; }
+
+            // 2. DB features whose name STARTS WITH the scraped value
+            //    e.g. "Парктроник" → "Парктроник задна" + "Парктроник предна"
+            if (candidate.Length >= 4)
+            {
+                var prefixMatches = _features
+                    .Where(f => f.Name.StartsWith(candidate, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+                if (prefixMatches.Count > 0) { foreach (var m in prefixMatches) result.Add(m); continue; }
+            }
+
+            // 3. Slash-separated compound: try each part individually ("Типтроник/Мултитроник")
+            if (candidate.Contains('/'))
+            {
+                foreach (var part in candidate.Split('/').Select(p => p.Trim()).Where(p => p.Length >= 3))
+                {
+                    var partMatch = _features.FirstOrDefault(f =>
+                        f.Name.Equals(part, StringComparison.OrdinalIgnoreCase));
+                    if (partMatch != null) result.Add(partMatch);
+                }
+            }
+        }
+
+        return result;
     }
 
     public CarListing? Normalize(ScrapedListing scraped, string systemUserId)
@@ -80,6 +158,13 @@ public class ListingNormalizer
 
         if (!string.IsNullOrEmpty(scraped.DriveType))
             listing.DriveType = ParseDriveType(scraped.DriveType);
+
+        // Map extracted feature strings to CarFeature entities
+        if (_features.Count > 0 && scraped.ExtractedFeatures.Count > 0)
+        {
+            foreach (var feature in MapFeatures(scraped.ExtractedFeatures))
+                listing.Features.Add(feature);
+        }
 
         // Map image URLs to CarImage entities
         for (int i = 0; i < scraped.ImageUrls.Count; i++)

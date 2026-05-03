@@ -30,7 +30,7 @@ public class ScraperBackgroundService
         _logger = logger;
     }
 
-    public bool IsRunning => _activeCts is { IsCancellationRequested: false };
+    public bool IsRunning => ActiveJob != null;
 
     public ScraperJob? ActiveJob => _jobs.Values
         .FirstOrDefault(j => j.Status == "Running");
@@ -97,6 +97,14 @@ public class ScraperBackgroundService
             job.Error = ex.Message;
             job.CompletedAt = DateTime.UtcNow;
             _logger.LogError(ex, "Scraper job {JobId} failed", job.Id);
+        }
+        finally
+        {
+            lock (_lock)
+            {
+                _activeCts?.Dispose();
+                _activeCts = null;
+            }
         }
     }
 }

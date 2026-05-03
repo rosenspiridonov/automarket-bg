@@ -244,13 +244,10 @@ public class CarsBgParser : IListingParser
             }
         }
 
+        // Features section: "Комфорт:", "Сигурност:", "Друго:" etc. — parse into structured features, not description
         var extrasEl = document.QuerySelector(".description.text-copy");
-        if (extrasEl != null && listing.Description != null)
-        {
-            var extras = extrasEl.TextContent.Trim();
-            if (extras.Length > 10)
-                listing.Description += "\n\n" + extras;
-        }
+        if (extrasEl != null)
+            ParseFeaturesFromElement(extrasEl.TextContent, listing);
 
         var sellerNameEl = document.QuerySelector(".content:last-child table tr:first-child td:first-child a b");
         if (sellerNameEl != null)
@@ -349,6 +346,24 @@ public class CarsBgParser : IListingParser
         {
             listing.DriveType = "AWD";
         }
+    }
+
+    private static void ParseFeaturesFromElement(string text, ScrapedListing listing)
+    {
+        // Remove known category header words (lines like "Комфорт:", "Сигурност:", "Друго:")
+        var cleaned = Regex.Replace(
+            text,
+            @"(Комфорт|Сигурност|Безопасност|Интериор|Екстериор|Двигател|Трансмисия|Друго|Допълнително|Safety|Comfort|Exterior|Interior)\s*:",
+            " ",
+            RegexOptions.IgnoreCase);
+
+        // Split by commas and newlines, trim each token
+        var items = Regex.Split(cleaned, @"[,\n\r]+")
+            .Select(s => s.Trim().Trim('.'))
+            .Where(s => s.Length >= 2 && s.Length <= 80)
+            .Distinct(StringComparer.OrdinalIgnoreCase);
+
+        listing.ExtractedFeatures.AddRange(items);
     }
 
     private async Task<List<ScrapedListing>> ParseFallbackAsync(IDocument document)
