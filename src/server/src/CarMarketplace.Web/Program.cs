@@ -38,6 +38,8 @@ void ConfigureScraperHttpClient(HttpClient client)
 {
     client.DefaultRequestHeaders.UserAgent.ParseAdd(scraperSettings.UserAgent);
     client.DefaultRequestHeaders.AcceptLanguage.ParseAdd(scraperSettings.AcceptLanguage);
+    client.DefaultRequestHeaders.Accept.ParseAdd("text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
+    client.DefaultRequestHeaders.Add("Accept-Encoding", "gzip, deflate, br");
     client.Timeout = TimeSpan.FromSeconds(scraperSettings.HttpTimeoutSeconds);
 }
 
@@ -110,10 +112,14 @@ builder.Services.AddControllers()
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+var allowedOrigins = builder.Configuration
+    .GetSection("Cors:AllowedOrigins")
+    .Get<string[]>() ?? ["http://localhost:6173"];
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
-        policy.WithOrigins("http://localhost:6173")
+        policy.WithOrigins(allowedOrigins)
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials());

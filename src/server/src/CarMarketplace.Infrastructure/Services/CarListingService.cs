@@ -29,8 +29,10 @@ public class CarListingService(
 
     public async Task<PagedResult<CarListingDto>> SearchAsync(SearchFilter filter)
     {
+        var now = DateTime.UtcNow;
         var query = context.CarListings
-            .Where(l => l.Status == ListingStatus.Active);
+            .Where(l => l.Status == ListingStatus.Active)
+            .Where(l => l.ExpiresAt == null || l.ExpiresAt > now);
 
         if (filter.MakeId.HasValue)
             query = query.Where(l => l.MakeId == filter.MakeId);
@@ -139,7 +141,7 @@ public class CarListingService(
 
         var fairPriceRef = await analytics.GetFairPriceReferenceAsync(listing.MakeId, listing.ModelId, listing.Year, listing.Id);
         FairPriceAnalysisDto? fairPriceAnalysis = null;
-        if (fairPriceRef is not null)
+        if (fairPriceRef is not null && fairPriceRef.AveragePrice > 0)
         {
             var pct = (listing.Price - fairPriceRef.AveragePrice) / fairPriceRef.AveragePrice * 100m;
             var position = pct < -7m ? "below" : pct > 7m ? "above" : "average";
@@ -189,8 +191,9 @@ public class CarListingService(
             SellerCity = listing.ExternalSourceUrl != null ? null : listing.Seller.City,
             SellerMemberSince = listing.ExternalSourceUrl != null ? null : listing.Seller.CreatedAt,
             ExternalSourceUrl = listing.ExternalSourceUrl,
-            ExternalSource = listing.ExternalSourceUrl != null
-                ? new Uri(listing.ExternalSourceUrl).Host.Replace("www.", string.Empty)
+            ExternalSource = listing.ExternalSourceUrl != null &&
+                             Uri.TryCreate(listing.ExternalSourceUrl, UriKind.Absolute, out var extUri)
+                ? extUri.Host.Replace("www.", string.Empty)
                 : null,
             CreatedAt = listing.CreatedAt,
             Images = listing.Images.Select(i => new CarImageDto
@@ -292,6 +295,7 @@ public class CarListingService(
         if (request.City != null) listing.City = request.City;
         if (request.Region != null) listing.Region = request.Region;
         if (request.Mileage.HasValue) listing.Mileage = request.Mileage.Value;
+        if (request.VinNumber != null) listing.VinNumber = request.VinNumber;
 
         if (request.Status != null)
         {

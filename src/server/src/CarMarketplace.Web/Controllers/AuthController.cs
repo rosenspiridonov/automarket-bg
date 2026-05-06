@@ -49,4 +49,11 @@ public class AuthController(IAuthService authService) : ControllerBase
             return Unauthorized(new { error = ex.Message });
         }
     }
+
+    [HttpPost("logout")]
+    public async Task<IActionResult> Logout([FromBody] RefreshTokenRequest request)
+    {
+        await authService.LogoutAsync(request.RefreshToken);
+        return NoContent();
+    }
 }

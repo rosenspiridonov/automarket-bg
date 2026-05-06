@@ -22,7 +22,6 @@ public class MobileBgParser : IListingParser
         _httpClient = httpClient;
         _logger = logger;
         _settings = settings.Value;
-        Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
     }
 
     public async Task<List<ScrapedListing>> ScrapeListingsAsync(int maxPages = 5, CancellationToken ct = default)
@@ -32,13 +31,11 @@ public class MobileBgParser : IListingParser
         for (int page = 1; page <= maxPages; page++)
         {
             ct.ThrowIfCancellationRequested();
-
             _logger.LogInformation("[mobile.bg] Scraping page {Page}/{MaxPages}...", page, maxPages);
 
             try
             {
                 var listings = await ScrapeSearchPageAsync(page, ct);
-
                 if (listings.Count == 0)
                 {
                     _logger.LogInformation("[mobile.bg] No more listings found at page {Page}. Stopping.", page);
@@ -57,20 +54,42 @@ public class MobileBgParser : IListingParser
             }
         }
 
+        _logger.LogInformation("[mobile.bg] Enriching {Count} listings with detail page data...", allListings.Count);
+        foreach (var listing in allListings)
+        {
+            ct.ThrowIfCancellationRequested();
+            try
+            {
+                await EnrichFromDetailPageAsync(listing, ct);
+                await Task.Delay(Random.Shared.Next(_settings.DetailDelay.MinMs, _settings.DetailDelay.MaxMs), ct);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.LogDebug(ex, "[mobile.bg] Failed to enrich listing: {Title}", listing.Title);
+            }
+        }
+
         return allListings;
     }
 
+    // ── Search results ──────────────────────────────────────────────────────
+
     private async Task<List<ScrapedListing>> ScrapeSearchPageAsync(int page, CancellationToken ct)
     {
-        // mobile.bg redesigned — CGI GET with query params still works
-        var url = $"{_settings.MobileBgSearchUrl}?act=3&f1={page}&f2=1&f3=1";
+        // Page 1: /obiavi/avtomobili-dzhipove
+        // Page N: /obiavi/avtomobili-dzhipove/p-{N}
+        var url = page == 1
+            ? _settings.MobileBgSearchUrl
+            : $"{_settings.MobileBgSearchUrl}/p-{page}";
 
         var response = await _httpClient.GetAsync(url, ct);
-        response.EnsureSuccessStatusCode();
+        if (!response.IsSuccessStatusCode)
+        {
+            _logger.LogWarning("[mobile.bg] Search page {Page} returned {Status}", page, (int)response.StatusCode);
+            return [];
+        }
 
         var bytes = await response.Content.ReadAsByteArrayAsync(ct);
-
-        // Detect encoding from Content-Type; fall back to windows-1251 (legacy mobile.bg default)
         var charSet = response.Content.Headers.ContentType?.CharSet;
         var encoding = string.Equals(charSet, "utf-8", StringComparison.OrdinalIgnoreCase)
             ? Encoding.UTF8
@@ -89,27 +108,19 @@ public class MobileBgParser : IListingParser
         var listings = new List<ScrapedListing>();
         var seen = new HashSet<string>();
 
-        // New mobile.bg structure: listing links follow /obiava-{ID}-{slug}
-        var links = document.QuerySelectorAll("a[href*='obiava-']");
-
-        foreach (var link in links)
+        // Collect every unique obiava link — detail page will fill all real data.
+        // Filter to links whose href contains obiava-{digits}- so we skip nav/banner links.
+        foreach (var link in document.QuerySelectorAll("a[href*='obiava-']"))
         {
             try
             {
                 var listing = ParseListingFromLink(link, seen);
-                if (listing != null)
-                    listings.Add(listing);
+                if (listing != null) listings.Add(listing);
             }
             catch (Exception ex)
             {
                 _logger.LogDebug(ex, "[mobile.bg] Failed to parse listing link");
             }
-        }
-
-        if (listings.Count == 0)
-        {
-            // Fallback: extract all /obiava- URLs directly from raw HTML via regex
-            listings = ParseListingsFromRawHtml(html, seen);
         }
 
         return listings;
@@ -122,179 +133,310 @@ public class MobileBgParser : IListingParser
         if (!idMatch.Success) return null;
 
         var externalId = $"mobilebg_{idMatch.Groups[1].Value}";
-        if (!seen.Add(externalId)) return null;
+        if (seen.Contains(externalId)) return null;
+        seen.Add(externalId);
 
+        // Use link text as a placeholder title — detail page overwrites with h1 .obTitle
         var title = link.TextContent.Trim();
-        if (string.IsNullOrWhiteSpace(title) || title.Length < 3) return null;
+        if (string.IsNullOrWhiteSpace(title) || title.Length < 3)
+            title = $"mobile.bg #{idMatch.Groups[1].Value}";
 
-        // Skip navigation/pager links that contain only numbers
-        if (Regex.IsMatch(title, @"^\d+$")) return null;
-
-        var fullUrl = NormalizeUrl(href);
+        var sourceUrl = NormalizeUrl(href);
 
         var listing = new ScrapedListing
         {
             Title = title,
-            SourceUrl = fullUrl,
+            SourceUrl = sourceUrl,
             ExternalId = externalId,
             Source = SourceName
         };
 
         ParseMakeModelFromTitle(title, listing);
 
-        // Walk up the DOM to find price and spec details in the card container
-        var container = FindContainer(link);
-        if (container != null)
+        // Grab thumbnail from a nearby img in the same card container
+        var card = link.Closest("article, li, div[class]") ?? link.ParentElement;
+        if (card != null)
         {
-            var text = container.TextContent;
-            ParsePrice(text, listing);
-            ParseDetailsFromText(text, listing);
-
-            // Thumbnail image
-            var img = container.QuerySelector("img[src*='photo'], img[data-src*='photo'], img[src*='mobistatic']");
+            var img = card.QuerySelector("img[src*='mobistatic'], img[src*='focus.bg']");
             if (img != null)
             {
                 var src = img.GetAttribute("src") ?? img.GetAttribute("data-src") ?? "";
                 if (!string.IsNullOrEmpty(src))
                     listing.ImageUrls.Add(NormalizeUrl(src));
             }
+
+            // Opportunistic price/mileage/city from card text — detail page overwrites
+            var cardText = card.TextContent;
+            ParsePrice(cardText, listing);
+            ParseMileage(cardText, listing);
+
+            var cityEl = card.QuerySelector(".grad span, .location span, [class*='city'] span");
+            listing.City = cityEl?.TextContent.Trim();
         }
 
         return listing;
     }
 
-    private static IElement? FindContainer(IElement link)
+    // ── Detail page enrichment ──────────────────────────────────────────────
+
+    private async Task EnrichFromDetailPageAsync(ScrapedListing listing, CancellationToken ct)
     {
-        // Walk up max 5 levels to find a container with meaningful content
-        var el = link.ParentElement;
-        for (int i = 0; i < 5 && el != null; i++)
+        var response = await _httpClient.GetAsync(listing.SourceUrl, ct);
+        if (!response.IsSuccessStatusCode) return;
+
+        var bytes = await response.Content.ReadAsByteArrayAsync(ct);
+        var charSet = response.Content.Headers.ContentType?.CharSet;
+        var encoding = string.Equals(charSet, "utf-8", StringComparison.OrdinalIgnoreCase)
+            ? Encoding.UTF8
+            : Encoding.GetEncoding("windows-1251");
+
+        var html = encoding.GetString(bytes);
+        var config = AngleSharp.Configuration.Default;
+        var context = BrowsingContext.New(config);
+        var document = await context.OpenAsync(req => req.Content(html));
+
+        // Title: h1 .obTitle
+        var titleEl = document.QuerySelector("h1 .obTitle");
+        if (titleEl != null)
         {
-            var text = el.TextContent;
-            // Container likely has price (digit sequences) and year
-            if (Regex.IsMatch(text, @"\d{4}") && Regex.IsMatch(text, @"\d[\d\s,.\u00a0]+(?:лв|EUR|€|\$)"))
-                return el;
-            el = el.ParentElement;
+            var t = titleEl.TextContent.Trim();
+            if (!string.IsNullOrWhiteSpace(t))
+                listing.Title = t;
         }
-        return link.ParentElement;
-    }
 
-    private List<ScrapedListing> ParseListingsFromRawHtml(string html, HashSet<string> seen)
-    {
-        var listings = new List<ScrapedListing>();
-
-        // Extract all obiava URLs from raw HTML as regex fallback
-        var matches = Regex.Matches(html, @"href=""(//www\.mobile\.bg/obiava-(\d+)-([^""]+))""");
-        foreach (Match m in matches)
+        // Gallery: prefer data-src (lazy-load), fall back to src
+        listing.ImageUrls.Clear();
+        foreach (var img in document.QuerySelectorAll("img[data-src*='mobistatic'], img[data-src*='focus.bg']"))
         {
-            var externalId = $"mobilebg_{m.Groups[2].Value}";
-            if (!seen.Add(externalId)) continue;
-
-            var href = m.Groups[1].Value;
-            var slug = m.Groups[3].Value;
-            var title = SlugToTitle(slug);
-
-            if (string.IsNullOrWhiteSpace(title) || title.Length < 3) continue;
-
-            var listing = new ScrapedListing
+            var src = img.GetAttribute("data-src") ?? "";
+            if (src.StartsWith("http") && !listing.ImageUrls.Contains(src))
+                listing.ImageUrls.Add(src);
+        }
+        if (listing.ImageUrls.Count == 0)
+        {
+            foreach (var img in document.QuerySelectorAll("img[src*='mobistatic'], img[src*='focus.bg']"))
             {
-                Title = title,
-                SourceUrl = NormalizeUrl(href),
-                ExternalId = externalId,
-                Source = SourceName
-            };
-
-            ParseMakeModelFromTitle(title, listing);
-            listings.Add(listing);
+                var src = img.GetAttribute("src") ?? "";
+                if (src.StartsWith("http") && !listing.ImageUrls.Contains(src))
+                    listing.ImageUrls.Add(src);
+            }
         }
 
-        return listings;
+        // Tech data: .techData .item — each item has two child elements (label + value)
+        foreach (var item in document.QuerySelectorAll(".techData .item"))
+        {
+            var children = item.Children.OfType<IElement>().ToList();
+            if (children.Count >= 2)
+            {
+                ApplySpecItem(children[0].TextContent.Trim(), children[1].TextContent.Trim(), listing);
+            }
+            else
+            {
+                var text = item.TextContent.Trim();
+                var colon = text.IndexOf(':');
+                if (colon > 0)
+                    ApplySpecItem(text[..colon].Trim(), text[(colon + 1)..].Trim(), listing);
+            }
+        }
+
+        // Description: .moreInfo
+        var descEl = document.QuerySelector(".moreInfo");
+        if (descEl != null)
+        {
+            var descText = descEl.TextContent.Trim();
+            if (descText.Length > 10)
+                listing.Description = descText;
+        }
+
+        // Features: .carExtri .items — each .items is a category group, children are features.
+        // mobile.bg sometimes packs two features in one cell with " \ " separator.
+        foreach (var group in document.QuerySelectorAll(".carExtri .items"))
+        {
+            foreach (var child in group.Children.OfType<IElement>())
+            {
+                var feat = child.TextContent.Trim();
+                if (string.IsNullOrWhiteSpace(feat) || feat.Length < 2) continue;
+
+                foreach (var part in feat.Split(new[] { @" \ ", @"\" }, StringSplitOptions.RemoveEmptyEntries))
+                {
+                    var p = part.Trim();
+                    if (p.Length >= 2)
+                        listing.ExtractedFeatures.Add(p);
+                }
+            }
+        }
+
+        // Phone: prefer tel: link, fall back to regex on any .phone element
+        var telLink = document.QuerySelector("a[href^='tel:']");
+        if (telLink != null)
+        {
+            var phone = (telLink.GetAttribute("href") ?? "")["tel:".Length..].Trim();
+            if (!string.IsNullOrWhiteSpace(phone))
+                listing.SellerPhone = phone;
+        }
+        if (string.IsNullOrEmpty(listing.SellerPhone))
+        {
+            var phoneEl = document.QuerySelector(".phone");
+            if (phoneEl != null)
+            {
+                var m = Regex.Match(phoneEl.TextContent, @"0\d{8,9}");
+                if (m.Success) listing.SellerPhone = m.Value;
+            }
+        }
+
+        // Seller name: try a few common containers
+        var nameEl = document.QuerySelector(".dealer .name, .sellerName, .infoBox .name");
+        if (nameEl != null)
+        {
+            var name = nameEl.TextContent.Trim();
+            if (!string.IsNullOrWhiteSpace(name))
+                listing.SellerName = name;
+        }
+
+        // City: ApplySpecItem handles "Местонахождение" from techData;
+        // fall back to a location element if still empty
+        if (string.IsNullOrEmpty(listing.City))
+        {
+            var locEl = document.QuerySelector(".carLocation, [class*='location']");
+            if (locEl != null)
+            {
+                var loc = Regex.Replace(locEl.TextContent.Trim(),
+                    @"^(Намира се в|гр\.?)\s*", "", RegexOptions.IgnoreCase).Trim();
+                if (!string.IsNullOrWhiteSpace(loc))
+                    listing.City = loc;
+            }
+        }
+
+        _logger.LogDebug("[mobile.bg] Enriched: {Title}, {ImgCount} images, phone={Phone}",
+            listing.Title, listing.ImageUrls.Count, listing.SellerPhone ?? "—");
     }
 
-    private static string SlugToTitle(string slug)
+    // ── Spec parsing ────────────────────────────────────────────────────────
+
+    private static void ApplySpecItem(string label, string value, ScrapedListing listing)
     {
-        // "bmw-730-d-4x4-face-executive" → "BMW 730 d 4x4 face executive"
-        // Capitalize only the first word (make)
-        var parts = slug.Split('-', StringSplitOptions.RemoveEmptyEntries);
-        if (parts.Length == 0) return string.Empty;
-        parts[0] = parts[0].ToUpper();
-        return string.Join(" ", parts);
+        if (string.IsNullOrEmpty(label) || string.IsNullOrEmpty(value)) return;
+
+        if (label.Contains("Двигател") && string.IsNullOrEmpty(listing.FuelType))
+            listing.FuelType = MapFuelType(value);
+
+        else if (label.Contains("Мощност") && !listing.HorsePower.HasValue)
+        {
+            var m = Regex.Match(value, @"(\d+)");
+            if (m.Success && int.TryParse(m.Groups[1].Value, out var hp) && hp is >= 10 and <= 2000)
+                listing.HorsePower = hp;
+        }
+        else if (label.Contains("Скоростна") && string.IsNullOrEmpty(listing.TransmissionType))
+            listing.TransmissionType = value.Contains("Автом", StringComparison.OrdinalIgnoreCase)
+                ? "Automatic" : "Manual";
+
+        else if (label.Contains("Пробег") && !listing.Mileage.HasValue)
+            ParseMileage(value, listing);
+
+        else if ((label.Contains("производство") || label.Contains("Дата")) && !listing.Year.HasValue)
+        {
+            var m = Regex.Match(value, @"(19[89]\d|20[0-2]\d)");
+            if (m.Success && int.TryParse(m.Groups[1].Value, out var yr))
+                listing.Year = yr;
+        }
+        else if (label.Contains("Цвят") && string.IsNullOrEmpty(listing.Color))
+            listing.Color = MapColor(value);
+
+        else if (label.Contains("Категория") && string.IsNullOrEmpty(listing.BodyType))
+            listing.BodyType = MapBodyType(value);
+
+        else if ((label.Contains("Местонахождение") || label.Contains("Населено място")) && string.IsNullOrEmpty(listing.City))
+            listing.City = Regex.Replace(value, @"^(гр\.?|с\.?)\s*", "", RegexOptions.IgnoreCase).Trim();
     }
 
-    private string NormalizeUrl(string url)
+    private static string MapFuelType(string value)
     {
-        if (url.StartsWith("//")) return $"https:{url}";
-        if (url.StartsWith("http")) return url;
-        return $"{_settings.MobileBgBaseUrl}{url}";
+        var v = value.ToLowerInvariant();
+        if (v.Contains("бенз")) return "Petrol";
+        if (v.Contains("диз")) return "Diesel";
+        if (v.Contains("електр")) return "Electric";
+        if (v.Contains("хибрид")) return "Hybrid";
+        if (v.Contains("газ")) return "LPG";
+        return value;
     }
 
-    private static void ParsePrice(string priceText, ScrapedListing listing)
+    private static string MapColor(string value)
+    {
+        var v = value.ToLowerInvariant();
+        if (v.Contains("черн")) return "Black";
+        if (v.Contains("бял")) return "White";
+        if (v.Contains("сребр") || v.Contains("сив")) return "Silver";
+        if (v.Contains("червен")) return "Red";
+        if (v.Contains("синь") || v.StartsWith("син")) return "Blue";
+        if (v.Contains("зелен")) return "Green";
+        if (v.Contains("жълт")) return "Yellow";
+        if (v.Contains("кафяв")) return "Brown";
+        if (v.Contains("бежов")) return "Beige";
+        return value;
+    }
+
+    private static string MapBodyType(string value)
+    {
+        var v = value.ToLowerInvariant();
+        if (v.Contains("джип") || v.Contains("suv")) return "SUV";
+        if (v.Contains("хечбек") || v.Contains("хетчбек")) return "Hatchback";
+        if (v.Contains("комби")) return "Wagon";
+        if (v.Contains("купе")) return "Coupe";
+        if (v.Contains("кабрио")) return "Convertible";
+        if (v.Contains("ван") || v.Contains("миниван")) return "Van";
+        if (v.Contains("седан")) return "Sedan";
+        return value;
+    }
+
+    // ── Common helpers ──────────────────────────────────────────────────────
+
+    private static void ParsePrice(string text, ScrapedListing listing)
     {
         if (listing.Price.HasValue) return;
 
-        // Match price patterns: "22 900 лв", "22900 €", "22 900 EUR"
-        var match = Regex.Match(priceText,
-            @"([\d][\d\s\u00a0,]*\d)\s*(?:лв|EUR|€|\$)",
-            RegexOptions.IgnoreCase);
+        // Prefer EUR price: "72 699 €"
+        var match = Regex.Match(text, @"([\d][\d\s\u00a0]*\d)\s*€");
         if (!match.Success)
-            match = Regex.Match(priceText, @"([\d][\d\s\u00a0]{2,}[\d])");
+            // Fall back to лв
+            match = Regex.Match(text, @"([\d][\d\s\u00a0]*\d)\s*(?:лв|лева)", RegexOptions.IgnoreCase);
+        if (!match.Success) return;
 
-        if (match.Success)
-        {
-            var cleaned = Regex.Replace(match.Groups[1].Value, @"[\s\u00a0,]", "");
-            if (decimal.TryParse(cleaned, System.Globalization.NumberStyles.Any,
+        var cleaned = Regex.Replace(match.Groups[1].Value, @"[\s\u00a0]", "");
+        if (decimal.TryParse(cleaned, System.Globalization.NumberStyles.Any,
                 System.Globalization.CultureInfo.InvariantCulture, out var price)
-                && price > 100 && price < 100_000_000)
-                listing.Price = price;
-        }
+            && price > 100 && price < 100_000_000)
+            listing.Price = price;
+    }
+
+    private static void ParseMileage(string text, ScrapedListing listing)
+    {
+        if (listing.Mileage.HasValue) return;
+        var match = Regex.Match(text, @"([\d][\d\s\u00a0]*)\s*(?:км|km)", RegexOptions.IgnoreCase);
+        if (!match.Success) return;
+        var kmStr = Regex.Replace(match.Groups[1].Value, @"[\s\u00a0()]", "");
+        if (int.TryParse(kmStr, out var km) && km > 0 && km < 2_000_000)
+            listing.Mileage = km;
     }
 
     private static void ParseDetailsFromText(string text, ScrapedListing listing)
     {
         if (!listing.Year.HasValue)
         {
-            var yearMatch = Regex.Match(text, @"\b(19[89]\d|20[0-2]\d)\s*г?\.?");
-            if (yearMatch.Success && int.TryParse(yearMatch.Groups[1].Value, out var year))
-                listing.Year = year;
+            var m = Regex.Match(text, @"\b(19[89]\d|20[0-2]\d)\b");
+            if (m.Success && int.TryParse(m.Groups[1].Value, out var yr))
+                listing.Year = yr;
         }
 
-        if (!listing.Mileage.HasValue)
-        {
-            var kmMatch = Regex.Match(text, @"([\d][\d\s\u00a0]*)\s*(?:км|km)", RegexOptions.IgnoreCase);
-            if (kmMatch.Success)
-            {
-                var kmStr = Regex.Replace(kmMatch.Groups[1].Value, @"[\s\u00a0]", "");
-                if (int.TryParse(kmStr, out var km) && km > 0 && km < 2_000_000)
-                    listing.Mileage = km;
-            }
-        }
-
-        if (!listing.HorsePower.HasValue)
-        {
-            var hpMatch = Regex.Match(text, @"(\d{2,4})\s*(?:к\.?\s*с\.?|кс|hp)", RegexOptions.IgnoreCase);
-            if (hpMatch.Success && int.TryParse(hpMatch.Groups[1].Value, out var hp) && hp is >= 10 and <= 2000)
-                listing.HorsePower = hp;
-        }
+        ParseMileage(text, listing);
+        ParsePrice(text, listing);
 
         if (string.IsNullOrEmpty(listing.FuelType))
         {
-            var fuelMappings = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-            {
-                ["бензин"] = "Petrol", ["бенз"] = "Petrol",
-                ["дизел"] = "Diesel",
-                ["газ"] = "LPG",
-                ["електро"] = "Electric", ["електри"] = "Electric",
-                ["хибрид"] = "Hybrid",
-                ["plug-in"] = "PlugInHybrid",
-            };
-
-            foreach (var (keyword, fuelType) in fuelMappings)
-            {
-                if (text.Contains(keyword, StringComparison.OrdinalIgnoreCase))
-                {
-                    listing.FuelType = fuelType;
-                    break;
-                }
-            }
+            if (text.Contains("бензин", StringComparison.OrdinalIgnoreCase)) listing.FuelType = "Petrol";
+            else if (text.Contains("дизел", StringComparison.OrdinalIgnoreCase)) listing.FuelType = "Diesel";
+            else if (text.Contains("електр", StringComparison.OrdinalIgnoreCase)) listing.FuelType = "Electric";
+            else if (text.Contains("хибрид", StringComparison.OrdinalIgnoreCase)) listing.FuelType = "Hybrid";
+            else if (text.Contains("газ", StringComparison.OrdinalIgnoreCase)) listing.FuelType = "LPG";
         }
 
         if (string.IsNullOrEmpty(listing.TransmissionType))
@@ -312,6 +454,13 @@ public class MobileBgParser : IListingParser
         var parts = title.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length >= 1) listing.MakeName = parts[0];
         if (parts.Length >= 2) listing.ModelName = parts[1];
+    }
+
+    private string NormalizeUrl(string url)
+    {
+        if (url.StartsWith("//")) return $"https:{url}";
+        if (url.StartsWith("http")) return url;
+        return $"{_settings.MobileBgBaseUrl}{url}";
     }
 
     private static string ExtractIdFromUrl(string url)

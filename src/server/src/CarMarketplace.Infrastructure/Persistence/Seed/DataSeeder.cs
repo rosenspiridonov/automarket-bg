@@ -13,29 +13,36 @@ public static class DataSeeder
 
     public static async Task SeedAsync(AppDbContext context, ISeedDataProvider seedData)
     {
-        if (await context.Makes.AnyAsync())
-            return;
+        bool hasChanges = false;
 
-        var makes = seedData.GetMakes()
-            .Select(dto => new Make
-            {
-                Name = dto.Name,
-                Models = [.. dto.Models.Select(name => new Model { Name = name })]
-            })
-            .ToList();
+        if (!await context.Makes.AnyAsync())
+        {
+            var makes = seedData.GetMakes()
+                .Select(dto => new Make
+                {
+                    Name = dto.Name,
+                    Models = [.. dto.Models.Select(name => new Model { Name = name })]
+                })
+                .ToList();
+            context.Makes.AddRange(makes);
+            hasChanges = true;
+        }
 
-        var features = seedData.GetFeatures()
-            .Select(dto => new CarFeature
-            {
-                Name = dto.Name,
-                Category = dto.Category
-            })
-            .ToList();
+        if (!await context.CarFeatures.AnyAsync())
+        {
+            var features = seedData.GetFeatures()
+                .Select(dto => new CarFeature
+                {
+                    Name = dto.Name,
+                    Category = dto.Category
+                })
+                .ToList();
+            context.CarFeatures.AddRange(features);
+            hasChanges = true;
+        }
 
-        context.Makes.AddRange(makes);
-        context.CarFeatures.AddRange(features);
-
-        await context.SaveChangesAsync();
+        if (hasChanges)
+            await context.SaveChangesAsync();
     }
 
     public static async Task SeedMissingModelsAsync(AppDbContext context, ISeedDataProvider seedData)

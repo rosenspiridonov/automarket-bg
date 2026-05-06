@@ -8,6 +8,7 @@ public record UpdateListingRequest
     public int? Mileage { get; init; }
     public string? City { get; init; }
     public string? Region { get; init; }
+    public string? VinNumber { get; init; }
     public string? Status { get; init; }
     public List<int>? FeatureIds { get; init; }
 }

@@ -12,4 +12,7 @@ export const authApi = {
     apiClient
       .post<AuthResponse>('/auth/refresh', { refreshToken })
       .then((r) => r.data),
+
+  logout: (refreshToken: string) =>
+    apiClient.post('/auth/logout', { refreshToken }).catch(() => {}),
 };

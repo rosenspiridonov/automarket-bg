@@ -3,6 +3,7 @@ import type {
   CarListingDto,
   CarListingDetailDto,
   CreateListingRequest,
+  UpdateListingRequest,
   PagedResult,
   SearchFilter,
 } from '../types/listing';
@@ -24,7 +25,7 @@ export const listingsApi = {
   create: (data: CreateListingRequest) =>
     apiClient.post<{ id: number }>('/listings', data).then((r) => r.data),
 
-  update: (id: number, data: Partial<CreateListingRequest>) =>
+  update: (id: number, data: UpdateListingRequest) =>
     apiClient.put(`/listings/${id}`, data),
 
   delete: (id: number) => apiClient.delete(`/listings/${id}`),

@@ -69,6 +69,17 @@ public class AuthService(
         return await GenerateAuthResponseAsync(storedToken.User);
     }
 
+    public async Task LogoutAsync(string refreshToken)
+    {
+        var storedToken = await context.RefreshTokens
+            .FirstOrDefaultAsync(rt => rt.Token == refreshToken);
+
+        if (storedToken == null || storedToken.IsRevoked) return;
+
+        storedToken.IsRevoked = true;
+        await context.SaveChangesAsync();
+    }
+
     private async Task<AuthResponse> GenerateAuthResponseAsync(ApplicationUser user)
     {
         var roles = await userManager.GetRolesAsync(user);

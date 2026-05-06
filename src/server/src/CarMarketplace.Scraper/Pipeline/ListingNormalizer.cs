@@ -85,7 +85,8 @@ public class ListingNormalizer
 
             // 2. DB features whose name STARTS WITH the scraped value
             //    e.g. "Парктроник" → "Парктроник задна" + "Парктроник предна"
-            if (candidate.Length >= 4)
+            //    Require at least 6 chars to avoid short tokens matching unrelated features
+            if (candidate.Length >= 6)
             {
                 var prefixMatches = _features
                     .Where(f => f.Name.StartsWith(candidate, StringComparison.OrdinalIgnoreCase))

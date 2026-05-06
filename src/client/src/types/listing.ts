@@ -23,6 +23,8 @@ export interface CarListingDto {
   primaryImageUrl: string | null;
   imageCount: number;
   sellerId: string;
+  sellerName: string;
+  sellerPhone: string | null;
   createdAt: string;
 }
 
@@ -57,8 +59,6 @@ export interface CarListingDetailDto extends CarListingDto {
   features: CarFeatureDto[];
   priceHistory: PriceHistoryPoint[];
   fairPriceAnalysis: FairPriceAnalysis | null;
-  sellerName: string;
-  sellerPhone: string | null;
   sellerEmail: string | null;
   sellerCity: string | null;
   sellerMemberSince: string | null;
@@ -109,6 +109,18 @@ export interface CreateListingRequest {
   city?: string;
   region?: string;
   featureIds: number[];
+}
+
+export interface UpdateListingRequest {
+  title?: string;
+  description?: string;
+  price?: number;
+  mileage?: number;
+  city?: string;
+  region?: string;
+  vinNumber?: string;
+  status?: string;
+  featureIds?: number[];
 }
 
 export interface PagedResult<T> {

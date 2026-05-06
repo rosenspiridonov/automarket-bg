@@ -14,7 +14,7 @@ interface AuthState {
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       accessToken: null,
       refreshToken: null,
       user: null,
@@ -31,13 +31,19 @@ export const useAuthStore = create<AuthState>()(
           accessToken: tokens.accessToken,
           refreshToken: tokens.refreshToken,
         }),
-      logout: () =>
-        set({
-          accessToken: null,
-          refreshToken: null,
-          user: null,
-          isAuthenticated: false,
-        }),
+      logout: () => {
+        // Fire-and-forget: revoke the refresh token on the server so it can't be reused.
+        // Use fetch directly to avoid the circular-import with apiClient.
+        const { refreshToken } = get();
+        if (refreshToken) {
+          fetch('/api/auth/logout', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ refreshToken }),
+          }).catch(() => {});
+        }
+        set({ accessToken: null, refreshToken: null, user: null, isAuthenticated: false });
+      },
     }),
     {
       name: 'auth-storage',

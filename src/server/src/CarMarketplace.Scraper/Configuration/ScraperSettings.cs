@@ -6,7 +6,7 @@ public class ScraperSettings
 
     public string CarsBgBaseUrl { get; set; } = "https://www.cars.bg";
     public string MobileBgBaseUrl { get; set; } = "https://www.mobile.bg";
-    public string MobileBgSearchUrl { get; set; } = "https://www.mobile.bg/pcgi/mobile.cgi";
+    public string MobileBgSearchUrl { get; set; } = "https://www.mobile.bg/obiavi/avtomobili-dzhipove";
 
     public string UserAgent { get; set; } =
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36";
