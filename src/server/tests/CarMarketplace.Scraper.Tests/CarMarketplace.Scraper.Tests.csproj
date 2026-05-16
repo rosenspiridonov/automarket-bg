@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -20,6 +20,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\CarMarketplace.Domain\CarMarketplace.Domain.csproj" />
+    <ProjectReference Include="..\..\src\CarMarketplace.Application\CarMarketplace.Application.csproj" />
+    <ProjectReference Include="..\..\src\CarMarketplace.Infrastructure\CarMarketplace.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\CarMarketplace.Scraper\CarMarketplace.Scraper.csproj" />
   </ItemGroup>
 
 </Project>

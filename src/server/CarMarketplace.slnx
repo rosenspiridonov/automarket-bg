@@ -7,7 +7,7 @@
     <Project Path="src/CarMarketplace.Web/CarMarketplace.Web.csproj" />
   </Folder>
   <Folder Name="/tests/">
-    <Project Path="tests/CarMarketplace.Domain.Tests/CarMarketplace.Domain.Tests.csproj" />
     <Project Path="tests/CarMarketplace.Application.Tests/CarMarketplace.Application.Tests.csproj" />
+    <Project Path="tests/CarMarketplace.Scraper.Tests/CarMarketplace.Scraper.Tests.csproj" />
   </Folder>
 </Solution>

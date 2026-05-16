@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
 using AngleSharp;
@@ -52,7 +52,7 @@ public class MobileBgParser : IListingParser
     private static readonly Regex MetaCharsetRegex = new(@"<meta[^>]*charset\s*=\s*[""']?([\w-]+)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
     private static readonly Regex MetaCharsetTagRegex = new(@"<meta\b[^>]*\bcharset\b[^>]*>", RegexOptions.IgnoreCase | RegexOptions.Compiled);
     private static readonly Regex PriceEurRegex = new(@"([\d][\d\s ]*\d)\s*€", RegexOptions.Compiled);
-    private static readonly Regex PriceBgnRegex = new(@"([\d][\d\s ]*\d)\s*(?:лв|лева)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly Regex PriceBgnRegex = new(@"([\d][\d\s.,]*\d)\s*(?:лв|лева)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
     private static readonly Regex MileageRegex = new(@"([\d][\d\s ]*)\s*(?:км|km)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
     private static readonly Regex YearRegex = new(@"(19[89]\d|20[0-2]\d)", RegexOptions.Compiled);
     private static readonly Regex DigitsRegex = new(@"\d+", RegexOptions.Compiled);
@@ -61,7 +61,7 @@ public class MobileBgParser : IListingParser
     private static readonly Regex LocationPrefixRegex = new(@"^(Намира се в|гр\.?)\s*", RegexOptions.IgnoreCase | RegexOptions.Compiled);
     private static readonly Regex NumberWhitespaceRegex = new(@"[\s ()]", RegexOptions.Compiled);
 
-    private static readonly Regex ListingIdSuffixRegex = new(@"\s*Обява[:\s]+\d+\s*$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    internal static readonly Regex ListingIdSuffixRegex = new(@"\s*Обява[:\s]+\d+\s*$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
     private static readonly string[] FeatureSeparators = [@" \ ", @"\", ","];
 
@@ -248,7 +248,7 @@ public class MobileBgParser : IListingParser
         return declaredEncoding.GetString(bytes);
     }
 
-    private static bool LooksClean(string text)
+    internal static bool LooksClean(string text)
     {
         if (text.Length == 0)
         {
@@ -530,7 +530,7 @@ public class MobileBgParser : IListingParser
         }
     }
 
-    private static int? TryParseHorsePower(string value)
+    internal static int? TryParseHorsePower(string value)
     {
         var match = DigitsRegex.Match(value);
         if (!match.Success || !int.TryParse(match.Value, out var horsePower))
@@ -541,13 +541,13 @@ public class MobileBgParser : IListingParser
         return horsePower is >= MinHorsePower and <= MaxHorsePower ? horsePower : null;
     }
 
-    private static int? TryParseYear(string value)
+    internal static int? TryParseYear(string value)
     {
         var match = YearRegex.Match(value);
         return match.Success && int.TryParse(match.Groups[1].Value, out var year) ? year : null;
     }
 
-    private static decimal? TryParsePrice(string text)
+    internal static decimal? TryParsePrice(string text)
     {
         var match = PriceEurRegex.Match(text);
         if (!match.Success)
@@ -569,7 +569,7 @@ public class MobileBgParser : IListingParser
         return price > MinPrice && price < MaxPrice ? price : null;
     }
 
-    private static int? TryParseMileage(string text)
+    internal static int? TryParseMileage(string text)
     {
         var match = MileageRegex.Match(text);
         if (!match.Success)
@@ -586,7 +586,7 @@ public class MobileBgParser : IListingParser
         return kilometers > 0 && kilometers < MaxMileage ? kilometers : null;
     }
 
-    private static void ParseMakeModelFromTitle(string title, ScrapedListing listing)
+    internal static void ParseMakeModelFromTitle(string title, ScrapedListing listing)
     {
         var parts = title.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length >= 1)
@@ -600,7 +600,7 @@ public class MobileBgParser : IListingParser
         }
     }
 
-    private static string MapFuelType(string value) => value.ToLowerInvariant() switch
+    internal static string MapFuelType(string value) => value.ToLowerInvariant() switch
     {
         var lowered when lowered.Contains("бенз") => "Petrol",
         var lowered when lowered.Contains("диз") => "Diesel",
@@ -610,13 +610,13 @@ public class MobileBgParser : IListingParser
         _ => value
     };
 
-    private static string MapColor(string value) => value.ToLowerInvariant() switch
+    internal static string MapColor(string value) => value.ToLowerInvariant() switch
     {
-        var lowered when lowered.Contains("черн") => "Black",
-        var lowered when lowered.Contains("бял") => "White",
+        var lowered when lowered.Contains("черн") || lowered.Contains("черен") => "Black",
+        var lowered when lowered.Contains("бял") || lowered.Contains("бяла") => "White",
         var lowered when lowered.Contains("сребр") || lowered.Contains("сив") => "Silver",
         var lowered when lowered.Contains("червен") => "Red",
-        var lowered when lowered.Contains("синь") || lowered.StartsWith("син") => "Blue",
+        var lowered when lowered.Contains("син") => "Blue",
         var lowered when lowered.Contains("зелен") => "Green",
         var lowered when lowered.Contains("жълт") => "Yellow",
         var lowered when lowered.Contains("кафяв") => "Brown",
@@ -624,7 +624,7 @@ public class MobileBgParser : IListingParser
         _ => value
     };
 
-    private static string MapBodyType(string value) => value.ToLowerInvariant() switch
+    internal static string MapBodyType(string value) => value.ToLowerInvariant() switch
     {
         var lowered when lowered.Contains("джип") || lowered.Contains("suv") => "SUV",
         var lowered when lowered.Contains("хечбек") || lowered.Contains("хетчбек") => "Hatchback",
