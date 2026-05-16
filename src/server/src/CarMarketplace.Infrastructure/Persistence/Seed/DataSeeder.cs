@@ -70,6 +70,31 @@ public static class DataSeeder
             await context.SaveChangesAsync();
     }
 
+    public static async Task SeedMissingFeaturesAsync(AppDbContext context, ISeedDataProvider seedData)
+    {
+        var existingNames = (await context.CarFeatures
+            .Select(f => f.Name)
+            .ToListAsync())
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var toAdd = seedData.GetFeatures()
+            .Where(dto => !existingNames.Contains(dto.Name))
+            .Select(dto => new CarFeature
+            {
+                Name = dto.Name,
+                Category = dto.Category
+            })
+            .ToList();
+
+        if (toAdd.Count == 0)
+        {
+            return;
+        }
+
+        context.CarFeatures.AddRange(toAdd);
+        await context.SaveChangesAsync();
+    }
+
     public static async Task SeedRolesAndAdminAsync(
         RoleManager<IdentityRole> roleManager,
         UserManager<ApplicationUser> userManager)

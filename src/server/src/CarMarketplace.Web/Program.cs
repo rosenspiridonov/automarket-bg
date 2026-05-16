@@ -151,6 +151,7 @@ using (var scope = app.Services.CreateScope())
     await context.Database.MigrateAsync();
     await DataSeeder.SeedAsync(context, seedData);
     await DataSeeder.SeedMissingModelsAsync(context, seedData);
+    await DataSeeder.SeedMissingFeaturesAsync(context, seedData);
 
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
     var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
